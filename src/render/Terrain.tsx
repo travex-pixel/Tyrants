@@ -453,8 +453,8 @@ export function IslandMesh({ island }: { island: Island }) {
       )}
       {falls.map((f, i) => (
         <group key={i} position={[f.x, f.y - 0.1, f.z]} rotation={[0, f.angle, 0]}>
-          <mesh position={[0, -5.3, 0.35]} renderOrder={3}>
-            <planeGeometry args={[1.0, 10.4, 1, 8]} />
+          <mesh position={[0, -5.9, 0.55]} renderOrder={3}>
+            <planeGeometry args={[0.9, 10.4, 1, 8]} />
             <shaderMaterial vertexShader={fallVert} fragmentShader={fallFrag} uniforms={fallUniforms} transparent depthWrite={false} side={THREE.DoubleSide} />
           </mesh>
         </group>
