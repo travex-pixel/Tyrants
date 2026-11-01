@@ -157,6 +157,7 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
 
 .wlabel.ftext { background: transparent; border: none; box-shadow: none; padding: 0; color: var(--c, #fff); font-size: 18px; font-weight: 900; letter-spacing: 0.02em; text-shadow: 0 2px 0 rgba(40,20,5,0.7), 0 0 10px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.5); }
 .decrees { width: min(92vw, 330px); }
+@media (max-width: 640px) { .decrees { width: min(62vw, 300px); top: 78px !important; } }
 .decree { padding: 7px 10px; border-radius: 10px; background: rgba(90,58,32,0.07); border: 1px solid rgba(90,58,32,0.2); }
 .decree.done { background: rgba(233,169,60,0.22); }
 .level-ring { position: relative; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 900; color: #3b2508; }
