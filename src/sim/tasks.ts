@@ -2,7 +2,6 @@ import type { Building, Creature, Faction, JobId, ResourceType, Task, World } fr
 import { BUILDINGS, SPECIES } from "./species";
 import { dist2 } from "./rng";
 import { buildingsOf, creaturesOf, nearestDropoff, nearestNode } from "./query";
-import { findFlatSpot } from "./terrain";
 import { worldRng, saveRng } from "./world";
 
 function addTask(w: World, t: Omit<Task, "id" | "assignedTo" | "createdAt" | "attempts">): Task {
@@ -165,7 +164,7 @@ function generateFactionTasks(w: World, f: Faction, islandId: number, pop: numbe
       let guard = 0;
       while (toCreate > 0 && guard++ < 6) {
         const near = lumberCamps.length > 0 && toCreate <= lumberCamps.length * 3 ? lumberCamps[toCreate % lumberCamps.length] : anchor!;
-        const node = nearestNode(w, islandId, near.x, near.z, (n) => n.resource === res && n.reservedBy === null && n.kind !== "crop" && !taskForNode(w, n.id), 60);
+        const node = nearestNode(w, islandId, near.x, near.z, (n) => n.resource === res && n.reservedBy === null && n.kind !== "crop" && !taskForNode(w, n.id) && !nodeUnreachable(w, n.id), 60);
         if (!node) break;
         addTask(w, { job: "gather", faction: fid, islandId, kind: "gatherNode", nodeId: node.id, resource: res, x: node.x, z: node.z, priority: res === "food" && f.stock.food < pop * 1.5 ? 1.8 : 1 });
         toCreate--;
@@ -187,19 +186,37 @@ function generateFactionTasks(w: World, f: Faction, islandId: number, pop: numbe
     const d = w.discoveries[id];
     if (d.islandId === islandId && !d.found) unfound++;
   }
-  if (unfound > 0 && pop >= 3) {
+  if (unfound > 0 && pop >= 3 && w.time > 75) {
     const open = countTasks(w, fid, (t) => t.kind === "exploreSpot" && t.islandId === islandId);
-    if (open < 1) {
+    const lastKey = `explore_${fid}_${islandId}`;
+    const last = (w.flags[lastKey] as number) ?? -999;
+    if (open < 1 && w.time - last > 45) {
+      w.flags[lastKey] = w.time;
       const isl = w.islands.find((i) => i.id === islandId)!;
       const rng = worldRng(w);
-      // target a random unfound discovery's general area (not its exact position: exploring has to actually find it)
-      const targets = Object.values(w.discoveries).filter((d) => d.islandId === islandId && !d.found);
-      const d = rng.pick(targets);
-      const spot = findFlatSpot(isl, d.x + rng.range(-5, 5), d.z + rng.range(-5, 5), 0, rng, 20);
+      // a random far-away walkable spot: exploring is a wander into the unknown, not a treasure map
+      const n = isl.size;
+      let spot: { x: number; z: number } | null = null;
+      for (let i = 0; i < 30 && !spot; i++) {
+        const idx = rng.int(0, n * n - 1);
+        if (isl.blocked[idx] !== 0) continue;
+        const x = isl.ox + (idx % n) + 0.5;
+        const z = isl.oz + Math.floor(idx / n) + 0.5;
+        if (dist2(x, z, ax, az) > 10 * 10) spot = { x, z };
+      }
       if (spot) addTask(w, { job: "explore", faction: fid, islandId, kind: "exploreSpot", x: spot.x, z: spot.z, priority: 0.7 });
       saveRng(w, rng);
     }
   }
+}
+
+/** Nodes that a creature recently failed to reach are skipped for a while (dense forest, rocks on cliffs). */
+export function nodeUnreachable(w: World, nodeId: number): boolean {
+  const t = w.flags[`unreach_${nodeId}`] as number | undefined;
+  return t !== undefined && w.time - t < 150;
+}
+export function markUnreachable(w: World, nodeId: number) {
+  w.flags[`unreach_${nodeId}`] = w.time;
 }
 
 function taskForNode(w: World, nodeId: number): boolean {

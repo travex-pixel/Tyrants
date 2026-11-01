@@ -5,7 +5,7 @@ import { heightAt, isWaterAt, isVoidAt, cellOf } from "./terrain";
 import { findPath, nearestWalkableCell, isWalkable } from "./nav";
 import { buildingsOf, creaturesNear, islandById, nearestDropoff, nearestNode, nearestBuilding } from "./query";
 import { chronicle, effect } from "./chronicle";
-import { assignTask, materialsDelivered, pickTask, removeTask, unassignTask } from "./tasks";
+import { assignTask, materialsDelivered, pickTask, removeTask, unassignTask, markUnreachable } from "./tasks";
 import { rebuildIslandNav } from "./world";
 import { unlockAchievement } from "./progression";
 
@@ -14,7 +14,12 @@ const ARRIVE = 0.22;
 
 export function isNight(w: World): boolean {
   const f = (w.time % w.dayLength) / w.dayLength;
-  return f > 0.74 || f < 0.04;
+  return f > 0.74;
+}
+/** Sun height in [-1, 1] for a day fraction; time 0 is mid-morning, sunset at ~0.72, night after 0.74. */
+export function sunHeightFor(f: number): number {
+  const phase = (f + 0.1) % 1;
+  return phase < 0.82 ? Math.sin((phase / 0.82) * Math.PI) : -Math.sin(((phase - 0.82) / 0.18) * Math.PI);
 }
 export function dayFraction(w: World): number {
   return (w.time % w.dayLength) / w.dayLength;
@@ -45,6 +50,17 @@ function speedOf(w: World, c: Creature): number {
   if (c.energy < 15) s *= 0.7;
   if (c.traits.includes("lazy") && c.state !== "flee") s *= 0.9;
   return s;
+}
+
+/** Nearest walkable standing spot next to a node, or null when the node is boxed in. */
+export function reachSpot(w: World, islandId: number, x: number, z: number): { x: number; z: number } | null {
+  const isl = islandById(w, islandId);
+  const cell = nearestWalkableCell(isl, x, z, 2);
+  if (cell === null) return null;
+  const sx = isl.ox + (cell % isl.size) + 0.5;
+  const sz = isl.oz + Math.floor(cell / isl.size) + 0.5;
+  if (dist2(sx, sz, x, z) > 1.75 * 1.75) return null;
+  return { x: sx, z: sz };
 }
 
 /** Plan a path to target. Returns false if unreachable. */
@@ -318,7 +334,13 @@ function beginTask(w: World, c: Creature, t: Task, rng: RNG): boolean {
     case "gatherNode": {
       const n = t.nodeId !== undefined ? w.nodes[t.nodeId] : undefined;
       if (!n) return false;
-      if (!goTo(w, c, n.x, n.z)) return false;
+      const spot = reachSpot(w, c.islandId, n.x, n.z);
+      if (!spot || !goTo(w, c, spot.x, spot.z)) {
+        markUnreachable(w, n.id);
+        removeTask(w, t.id, false);
+        c.taskId = null;
+        return false;
+      }
       setState(c, "gather");
       return true;
     }
@@ -535,6 +557,25 @@ export function updateCreature(w: World, c: Creature, dt: number, rng: RNG) {
   c.decisionCooldown -= dt;
   const t = currentTask(w, c);
 
+  // Survival overrides work: a starving or exhausted creature drops what it is doing.
+  if (c.decisionCooldown <= 0 && (c.state === "gather" || c.state === "carry" || c.state === "build" || c.state === "explore" || c.state === "wander" || c.state === "follow")) {
+    if (c.hunger > 82 && !(c.state === "carry" && c.carrying?.type === "food")) {
+      const f = w.factions[c.faction];
+      const canEat = (f && f.stock.food > 0 && nearestDropoff(w, c.faction, c.islandId, c.x, c.z)) || nearestNode(w, c.islandId, c.x, c.z, (n) => n.resource === "food" && n.kind !== "crop" && n.amount >= 1, 50);
+      if (canEat) {
+        interrupt(w, c, rng, false);
+        if (c.carrying) {
+          // keep what we carry: deliver it after eating (dropCarried would litter the island)
+        }
+        if (tryEat(w, c, rng)) return;
+      }
+      c.decisionCooldown = 3;
+    } else if (c.energy < 8 && c.state !== "carry") {
+      interrupt(w, c, rng, false);
+      if (startRest(w, c, rng)) return;
+    }
+  }
+
   switch (c.state) {
     case "idle": {
       if (c.decisionCooldown <= 0) decide(w, c, rng);
@@ -600,18 +641,19 @@ export function updateCreature(w: World, c: Creature, dt: number, rng: RNG) {
         if (moveAlong(w, c, dt, rng)) c.stateTime = 0;
         break;
       }
-      if (dist2(c.x, c.z, n.x, n.z) > 2.6) {
-        if (!goTo(w, c, n.x, n.z)) {
-          unassignTask(w, c, true);
-          setState(c, "idle");
-        }
+      if (dist2(c.x, c.z, n.x, n.z) > 3.2) {
+        // arrived at the end of the path but still not adjacent: the node is boxed in
+        markUnreachable(w, n.id);
+        removeTask(w, t.id, false);
+        c.taskId = null;
+        setState(c, "idle");
         break;
       }
       c.heading = Math.atan2(n.x - c.x, n.z - c.z);
       // work
       const mul = (sp.gatherMul[n.resource] ?? 1) * skillEfficiency(n.resource === "wood" ? c.skills.woodcutting : c.skills.gathering) * workMul(w, c);
       const lumberBonus = n.resource === "wood" && nearestBuilding(w, n.x, n.z, 10, (b) => b.type === "lumber" && b.complete && b.faction === c.faction) ? 1.35 : 1;
-      const need = 3.2 / (mul * lumberBonus);
+      const need = 4.2 / (mul * lumberBonus);
       if (c.stateTime >= need) {
         finishGather(w, c, n, rng);
         removeTask(w, t.id, false);

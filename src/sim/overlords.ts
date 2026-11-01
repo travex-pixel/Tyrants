@@ -100,7 +100,7 @@ export function thinkOverlord(w: World, f: Faction, rng: RNG) {
     if (next) {
       const def = BUILDINGS[next];
       // Only plan it when we hold at least ~40% of the materials (so creatures gather the rest; no free buildings)
-      const afford = Object.entries(def.cost).every(([k, v]) => f.stock[k as ResourceType] >= (v ?? 0) * 0.4);
+      const afford = Object.entries(def.cost).every(([k, v]) => f.stock[k as ResourceType] >= (v ?? 0) * (f.difficulty === "hard" ? 0.4 : 0.6));
       if (afford) {
         const anchor = complete.find((b) => b.type === "campfire") ?? complete[0];
         if (anchor) {
@@ -169,7 +169,7 @@ export function thinkOverlord(w: World, f: Faction, rng: RNG) {
     w.flags[`ai_ws_${f.id}`] = 1;
     chronicle(w, `${f.name} has completed a Workshop. Their builders are getting faster.`, "rival", 3, { faction: f.id });
   }
-  if (complete.length >= 6 && !w.flags[`ai_fort_${f.id}`]) {
+  if (complete.length >= 8 && !w.flags[`ai_fort_${f.id}`]) {
     w.flags[`ai_fort_${f.id}`] = 1;
     chronicle(w, `${f.name}'s settlement has grown into a proper stronghold.`, "rival", 3, { faction: f.id });
   }

@@ -10,7 +10,7 @@ import { chronicle } from "./chronicle";
 
 export const SIM_DT = 0.1; // 10 Hz fixed step
 export const WORLD_VERSION = 3;
-export const DAY_LENGTH = 240; // seconds per in-game day
+export const DAY_LENGTH = 360; // seconds per in-game day
 
 export const ACHIEVEMENTS: Omit<Achievement, "unlockedAt">[] = [
   { id: "first_spawn", title: "Let There Be Goblins", text: "Spawn your first creature.", essence: 2 },
