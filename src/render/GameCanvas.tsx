@@ -83,7 +83,7 @@ export function GameCanvas() {
         <CameraRig />
         <Post />
       </Canvas>
-      <div ref={(el) => { labelLayer.container = el; }} className="pointer-events-none absolute inset-0 overflow-hidden" />
+      <div ref={(el) => { labelLayer.container = el; }} className="pointer-events-none absolute inset-0 overflow-hidden" data-labels />
     </div>
   );
 }

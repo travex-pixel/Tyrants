@@ -78,7 +78,7 @@ export function Hud({ actions }: { actions: HudActions }) {
   const hideForIntro = intro >= 0 && intro < 4;
 
   return (
-    <div className="absolute inset-0 z-10 pointer-events-none select-none">
+    <div className="absolute inset-0 z-10 pointer-events-none select-none" data-hud>
       {/* Top bar */}
       {!hideForIntro && (
         <div className="absolute top-3 left-3 right-3 flex items-start gap-2 flex-wrap">

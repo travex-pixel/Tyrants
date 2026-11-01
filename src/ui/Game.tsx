@@ -295,10 +295,11 @@ export default function Game() {
     <div className="fixed inset-0 overflow-hidden bg-[var(--bg)]">
       {screen !== "boot" && <GameCanvas />}
       {screen === "boot" && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center fade-up">
+        <div className="absolute inset-0 flex items-center justify-center boot-screen">
+          <div className="text-center boot-card fade-up">
             <div className="title-dark text-5xl">Little Tyrants</div>
-            <div className="mt-3 text-[#cdb089] font-bold">Small worlds. Big egos.</div>
+            <div className="mt-3 text-[#f6e8cf] font-bold">Small worlds. Big egos.</div>
+            <div className="mt-4 text-[13px] font-bold text-[#e3c27e] pulse">Raising an island from the clouds…</div>
           </div>
         </div>
       )}
@@ -389,6 +390,42 @@ if (typeof window !== "undefined") {
     held: () => {
       const s = getSession();
       return !!s && Object.values(s.world.creatures).some((c) => c.state === "held");
+    },
+    /** Dress the world for a marketing capture: a small settlement, a crowd, golden hour, a blessing. */
+    stageForPreview: (zoom: number, yaw: number) => {
+      const s = getSession();
+      if (!s || !s.engine) return null;
+      const w = s.world;
+      const isl = w.islands[0];
+      const cf = Object.values(w.buildings).find((b) => b.type === "campfire" && b.faction === s.myFaction);
+      if (!cf) return null;
+      w.meta.mode = "sandbox";
+      w.flags.instantBuild = 1;
+      const types = ["house", "storage", "lumber", "farm", "house", "workshop"] as const;
+      let placed = 0;
+      for (const t of types) {
+        for (let r = 4; r < 13 && placed <= types.indexOf(t); r += 0.7)
+          for (let a = 0; a < Math.PI * 2 && placed <= types.indexOf(t); a += 0.2) {
+            const x = cf.x + Math.cos(a + placed * 1.9) * r;
+            const z = cf.z + Math.sin(a + placed * 1.9) * r;
+            const res = s.dispatch({ type: "place", building: t, x, z, player: s.me.id, instant: true });
+            if (res.ok) placed++;
+          }
+      }
+      const species = ["goblin", "goblin", "trollkin", "mushroom", "goblin", "mushroom"] as const;
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        s.dispatch({ type: "spawn", species: species[i % species.length], x: cf.x + Math.cos(a) * 2.2, z: cf.z + Math.sin(a) * 2.2, player: s.me.id });
+      }
+      // late afternoon light and a few seconds of settling, then a blessing for sparkle
+      w.time = Math.floor(w.time / w.dayLength) * w.dayLength + w.dayLength * 0.55;
+      for (let i = 0; i < 60; i++) s.engine.step();
+      s.dispatch({ type: "bless", x: cf.x, z: cf.z, player: s.me.id });
+      cameraCtl.desiredYaw = yaw;
+      cameraCtl.focus(cf.x + 1.5, cf.z + 1, zoom);
+      cameraCtl.snap();
+      void isl;
+      return { x: cf.x, z: cf.z, placed };
     },
     buildingCount: () => {
       const s = getSession();

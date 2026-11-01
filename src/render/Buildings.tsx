@@ -100,7 +100,7 @@ const BuildingMesh = memo(function BuildingMesh({ info }: { info: BInfo }) {
   const woodLight = "#a9784b";
   const stone = "#8e8a82";
   const plaster = "#e6d6b6";
-  const slate = "#5c6876";
+  const slate = "#8593a6";
   const roof = info.faction === "p1" ? slate : info.color;
   const shadows = quality !== "low";
 

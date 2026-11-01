@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "preview-assets": "node scripts/preview.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "9.8.2",

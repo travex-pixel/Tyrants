@@ -160,3 +160,14 @@ Design rules that the code follows:
 - Creatures never die, they faint and recover; this is deliberate for a toy, and it is what keeps offline progression safe.
 - Host-in-browser multiplayer is for friends, not for strangers (see trust model above).
 - The 100 Goblins challenge is CPU-heavy on older phones; use Low quality.
+
+## Deploy preview assets
+
+The link preview you see when the Vercel URL is shared (Open Graph / Twitter card), the favicon, the Apple touch icon, the PWA manifest icons and the loading-screen backdrop are all generated **from the game itself**, so they always match the current art:
+
+```bash
+npm start                  # production server on :3000
+npm run preview-assets     # writes app/opengraph-image.jpg, app/twitter-image.jpg, app/icon.png, app/apple-icon.png, public/preview/*
+```
+
+Next.js picks the `app/*-image.jpg` and `app/icon.png` files up automatically (file-based metadata). `metadataBase` is derived from `NEXT_PUBLIC_SITE_URL`, falling back to Vercel's `VERCEL_PROJECT_PRODUCTION_URL`, so the card URLs are absolute on every deployment without extra configuration. Re-run the script whenever you change the look and commit the results.
