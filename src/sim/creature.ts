@@ -591,6 +591,17 @@ export function updateCreature(w: World, c: Creature, dt: number, rng: RNG) {
   if (c.memory.length && c.memory[0].t < w.time - 400) c.memory.shift();
 
   if (c.state === "aboard") return; // flying in a skiff (see skiffs.ts)
+  // tutorial star: stands on the spot and bounces until picked up
+  if (w.flags.tutorialStar === c.id && c.state !== "held" && c.state !== "thrown") {
+    const isl0 = islandById(w, c.islandId);
+    c.y = Math.max(heightAt(isl0, c.x, c.z), isl0.waterLevel);
+    c.path = null;
+    if (c.taskId !== null) unassignTask(w, c, false);
+    c.state = "celebrate";
+    c.stateTime = 0;
+    c.decisionCooldown = 1;
+    return;
+  }
   // ── Physics / vertical position (c.y is the absolute world height of the creature's feet) ──
   const groundH = Math.max(heightAt(isl, c.x, c.z), isl.waterLevel);
   if (c.state === "held") {

@@ -57,10 +57,15 @@ export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
     } else if (stage === 2) {
       if (w) {
         const c = Object.values(w.creatures).find((x) => x.faction === w.playerFaction && x.species === "goblin" && x.state !== "held") ?? Object.values(w.creatures).find((x) => x.faction === w.playerFaction);
-        if (c) setPointer({ creatureId: c.id });
+        if (c) {
+          setPointer({ creatureId: c.id });
+          w.flags.tutorialStar = c.id;
+          cameraCtl.focus(c.x, c.z, 17);
+        }
       }
     } else if (stage === 3) {
       setPointer(null);
+      if (w) delete w.flags.tutorialStar;
     } else if (stage === 4) {
       useGame.getState().setPower("spawn");
       useGame.getState().setSpawnSpecies("goblin");
@@ -115,6 +120,8 @@ export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
   const skip = () => {
     if (timer.current) window.clearTimeout(timer.current);
     setPointer(null);
+    const w0 = getWorld();
+    if (w0) delete w0.flags.tutorialStar;
     useGame.getState().setPanel("none");
     useGame.getState().setPower("grab");
     onFinish();

@@ -195,7 +195,7 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
 }
 .wlabel.bubble { background: #fff8ea; border: 2px solid #6e5238; border-left-width: 2px; border-radius: 12px; color: #3a2918; font-size: 11px; padding: 2px 8px; box-shadow: 0 2px 6px rgba(30,15,5,0.35); }
 
-.wlabel.hand { background: transparent; border: none; box-shadow: none; font-size: 44px; color: #ffd166; text-shadow: 0 3px 0 #3b2508, 0 6px 16px rgba(0,0,0,0.6); padding: 0; }
+.wlabel.hand { background: transparent; border: none; box-shadow: none; font-size: 72px; line-height: 1; color: #ffd166; text-shadow: 0 4px 0 #3b2508, 0 8px 20px rgba(0,0,0,0.6); padding: 0; animation: teach 0.9s ease-in-out infinite; }
 .wlabel.dare { background: linear-gradient(180deg, var(--gold-a), var(--gold-b)); color: #3b2508; border-color: #7a4d14; font-size: 12px; border-radius: 999px; }
 @keyframes teach { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-8px) scale(1.06); } }
 .token.teach { animation: teach 0.9s ease-in-out infinite; box-shadow: 0 0 0 3px rgba(255,209,102,0.7), 0 0 26px rgba(255, 200, 90, 0.8), 0 3px 0 #5e3b10; }

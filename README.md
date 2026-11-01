@@ -45,22 +45,35 @@ Other scripts:
 
 **AI Overlords** use the same creature/task/economy systems (no free resources, no instant buildings) with a strategic layer: personality build orders, need-driven job priorities, real food-surplus population growth, trade offers, raids (the Hoarder lands a goblin raider on your coast – dunk it to foil the raid), and a memory of what you've done to them that shifts relations.
 
-**Progression**: Chronicle (world history, only real events), 18 achievements, Essence, power unlocks, bounded offline progression with a returning-player briefing, local saves (IndexedDB) with autosave.
+**Chaos that chains**: thrown creatures bowl whoever they land on; fire spreads tree to tree, drops logs and scorches buildings until rain puts it out; trees and rocks can be uprooted, carried and hurled (they shatter into resources and flatten bystanders); raising a hill launches whoever stands on it; giants trample, strip trees, dent buildings and raid the stores; buildings have hit points and collapse into rubble; a Mayhem meter pays out for cascades. Creatures remember the hand: thrown often they become jumpy and flee the cursor, blessed often they become devout and follow it.
+
+**Always a next thing**: Decrees (28 goals, three live), Overlord levels with titles, Omens (choice cards), Dares (timed objectives from live state with a marker on the target), natural arrivals when food and housing are spare, evening bonfires, wild boars that raid farms (brave folk chase them, the Sun tames them), and a Director that drops a feud, falling rock, raid, boars, windfall or omen whenever things go quiet.
+
+**Rivals you can reach**: sky-skiffs are real objects. Your raiders board a balloon-boat and fly an arc to a rival's coast; enemy skiffs are announced when they set sail and when they land. Trades, gifts and raids live in the Book's Rivals tab.
+
+**Progression**: Chronicle (world history, only real events), 25 achievements, Essence, power unlocks, bounded offline progression with a returning-player briefing, local saves (IndexedDB) with autosave, best scores per challenge.
+
+**Music**: a generative fantasy score (harp arpeggios, pads, flute motifs, drums at bonfires, tense in storms, soft at night) synthesised in WebAudio. No audio files.
 
 ---
 
 ## Controls
 
+Five tokens do everything: **Build**, **Friend**, **Zap**, **Sun**, **Hill** (plus a **More** pouch for Dig, Giant, Twin and Storm once unlocked). Dragging anything always picks it up; there is no grab mode.
+
 | | Desktop | Touch |
 | --- | --- | --- |
-| Pan | drag / WASD / arrows | one-finger drag |
-| Zoom | wheel / `-` `+` | pinch |
+| Pan | drag the world (it follows the pointer, with inertia) / WASD / arrows | one-finger drag |
+| Zoom (toward the cursor) | wheel / `-` `+` | pinch |
 | Rotate | right-drag / `Q` `E` | two-finger twist |
-| Select / use power | click | tap |
-| Grab & throw | drag a creature, flick to release | same |
-| Send selected creature | right-click ground | "Send" then tap |
-| Powers | `1`–`8` | power bar |
-| Build / Chronicle / Follow / Home / Pause | `B` `C` `F` `H` `Space` | icons |
+| Pick up & throw | drag a creature, tree or rock; flick to release | same |
+| Use a token | tap the token, then tap the ground or a creature | same |
+| Fly home | Home button / `H` / double-tap empty ground | same |
+| Send selected creature | right-click ground | "Send somewhere" then tap |
+| Tokens | `1`–`4` Friend / Zap / Sun / Hill, `0` no tool | bar |
+| Build / Book / Follow / Pause | `B` `C` `F` `Space` | tokens and the Book |
+
+"Invert camera drag" in Settings restores camera-style panning.
 
 ---
 
