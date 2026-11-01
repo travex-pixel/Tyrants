@@ -97,9 +97,9 @@ function buildSurface(isl: Island, dress: Dressing): SurfaceBuild {
     for (const t of dress.trees) {
       const d = Math.hypot(wx - t.x, wz - t.z);
       const r = 1.15 * t.s;
-      if (d < r) shade += (1 - d / r) * 0.35;
+      if (d < r) shade += (1 - d / r) * 0.2;
     }
-    if (shade > 0) tmp.multiplyScalar(1 - Math.min(0.32, shade));
+    if (shade > 0) tmp.multiplyScalar(1 - Math.min(0.2, shade));
     colors.push(tmp.r, tmp.g, tmp.b);
     vIndex[i] = positions.length / 3 - 1;
     return vIndex[i];

@@ -386,6 +386,10 @@ if (typeof window !== "undefined") {
       const c = s.world.creatures[id];
       if (c) useGame.getState().focusCamera(c.x, c.z, zoom);
     },
+    held: () => {
+      const s = getSession();
+      return !!s && Object.values(s.world.creatures).some((c) => c.state === "held");
+    },
     buildingCount: () => {
       const s = getSession();
       return s ? Object.values(s.world.buildings).filter((b) => b.faction === s.myFaction).length : 0;

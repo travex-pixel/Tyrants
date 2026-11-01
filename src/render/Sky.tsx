@@ -80,11 +80,11 @@ export function Sky() {
       sun.current.color.set("#9fb0ff").lerp(new THREE.Color("#ffe9c8"), c.day).lerp(new THREE.Color("#ffb27c"), c.dusk * 0.75);
     }
     if (hemi.current) {
-      hemi.current.intensity = 0.45 + c.day * 0.35;
+      hemi.current.intensity = 0.5 + c.day * 0.4;
       hemi.current.color.set("#5a6aa8").lerp(new THREE.Color("#dfe9f6"), c.day);
       hemi.current.groundColor.set("#5a4634").lerp(new THREE.Color("#7a6248"), c.day);
     }
-    if (amb.current) amb.current.intensity = 0.12 + (1 - c.day) * 0.35;
+    if (amb.current) amb.current.intensity = 0.22 + (1 - c.day) * 0.35;
   });
 
   const shadows = quality !== "low";

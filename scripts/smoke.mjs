@@ -43,35 +43,56 @@ await step("intro progresses to pick-up prompt", async () => {
   await shot("02-pickup-prompt");
 });
 await step("grab and throw a creature via pointer", async () => {
-  // find a creature's screen position via the world
-  const pos = await page.evaluate(() => window.__lt?.creatureScreenPos?.());
-  if (!pos) throw new Error("no creature position helper");
-  await page.mouse.move(pos.x, pos.y);
-  await page.mouse.down();
-  await page.waitForTimeout(150);
-  await page.mouse.move(pos.x + 60, pos.y - 20, { steps: 4 });
-  await page.waitForTimeout(100);
-  await page.waitForSelector("text=Now throw them", { timeout: 5000 });
-  await shot("03-holding");
-  // flick
-  for (let i = 0; i < 8; i++) {
-    await page.mouse.move(pos.x + 60 + i * 45, pos.y - 20 - i * 6);
-    await page.waitForTimeout(25);
+  // creatures walk and this headless renderer runs at ~4 fps, so retry the gesture a few times
+  let thrown = 0;
+  for (let attempt = 0; attempt < 4 && !thrown; attempt++) {
+    let pos = null;
+    for (let g = 0; g < 5; g++) {
+      pos = await page.evaluate(() => window.__lt?.creatureScreenPos?.());
+      if (!pos) throw new Error("no creature position helper");
+      await page.mouse.move(pos.x, pos.y);
+      await page.mouse.down();
+      await page.waitForTimeout(250);
+      if (await page.evaluate(() => window.__lt.held())) break;
+      await page.mouse.up();
+      await page.waitForTimeout(300);
+    }
+    if (!(await page.evaluate(() => window.__lt.held()))) throw new Error("could not grab a creature");
+    await page.mouse.move(pos.x + 60, pos.y - 20, { steps: 4 });
+    await page.waitForTimeout(100);
+    if (attempt === 0) {
+      await page.waitForSelector("text=Now throw them", { timeout: 5000 });
+      await shot("03-holding");
+    }
+    // A real flick arrives at 60-120 Hz; this software renderer processes one Playwright move per frame (~1 s),
+    // so dispatch the flick's pointer events directly on the canvas at a realistic rate.
+    await page.evaluate(([x, y]) => {
+      const el = document.querySelector("canvas");
+      const fire = (type, cx, cy) => el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, pointerType: "mouse", isPrimary: true, button: 0, buttons: type === "pointerup" ? 0 : 1, clientX: cx, clientY: cy }));
+      return new Promise((resolve) => {
+        let i = 0;
+        const tick = () => {
+          if (i < 8) { fire("pointermove", x + 60 + i * 45, y - 20 - i * 6); i++; setTimeout(tick, 12); }
+          else { fire("pointerup", x + 60 + 8 * 45, y - 20 - 8 * 6); resolve(); }
+        };
+        tick();
+      });
+    }, [pos.x, pos.y]);
+    await page.mouse.up(); // release the real pointer (and its capture) too
+    await page.waitForTimeout(800);
+    thrown = (await page.evaluate(() => window.__lt.stats())).thrown;
   }
-  await page.mouse.up();
-  await page.waitForTimeout(700);
+  if (thrown < 1) throw new Error("throw not registered");
   await shot("04-thrown");
   await page.waitForSelector("text=Your neighbours are getting stronger.", { timeout: 8000 });
-  const stats = await page.evaluate(() => window.__lt.stats());
-  if (stats.thrown < 1) throw new Error("throw not registered");
 });
 await step("finish intro via Build", async () => {
-  await page.click("text=Build");
+  await page.getByRole("button", { name: /^Build$/ }).first().click();
   await page.waitForTimeout(600);
   await shot("05-build-menu");
 });
 await step("place a lumber camp", async () => {
-  await page.click("text=Lumber Camp");
+  await page.locator('div.panel button:has-text("Lumber Camp")').first().click({ force: true });
   await page.waitForTimeout(300);
   const spot = await page.evaluate(() => window.__lt.buildSpotScreen(1));
   await page.mouse.click(spot.x, spot.y);

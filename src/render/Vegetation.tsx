@@ -448,7 +448,7 @@ export function Vegetation() {
       {mk(trunks, geos.trunk, MAX_TREES, <meshStandardMaterial roughness={1} />)}
       {mk(lobes, geos.lobe, MAX_LOBES, <meshStandardMaterial roughness={0.95} />, true, true)}
       {mk(cones, geos.cone, MAX_CONES, <meshStandardMaterial roughness={0.95} />, true, true)}
-      {mk(rocks, geos.rock, MAX_ROCKS, <meshStandardMaterial roughness={1} flatShading />, true, true)}
+      {mk(rocks, geos.rock, MAX_ROCKS, <meshStandardMaterial roughness={0.95} />, true, true)}
       {mk(bushes, geos.lobe, MAX_BUSH, <meshStandardMaterial roughness={0.95} />)}
       {mk(berries, geos.berry, MAX_BUSH * 4, <meshStandardMaterial roughness={0.6} />, false)}
       {mk(crystals, geos.crystal, MAX_CRYSTAL, <meshStandardMaterial roughness={0.25} emissive="#5a3fbf" emissiveIntensity={0.6} transparent opacity={0.92} />, false)}

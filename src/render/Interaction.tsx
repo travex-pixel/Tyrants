@@ -229,7 +229,7 @@ export function Interaction() {
         return;
       }
       if (e.button === 0 && (st.power === "grab" || st.intro >= 0) && !st.buildType) {
-        const hit = pickCreature(e.clientX, e.clientY, isTouch.current ? 44 : 30);
+        const hit = pickCreature(e.clientX, e.clientY, isTouch.current ? 46 : 34);
         if (hit !== null) {
           const wp = worldPoint(e.clientX, e.clientY);
           const r = s.dispatch({ type: "grab", creatureId: hit, player: s.me.id });
@@ -318,7 +318,9 @@ export function Interaction() {
         const d = dragging.current;
         dragging.current = null;
         const speed = Math.hypot(d.vx, d.vz);
-        const stale = performance.now() - d.lastT > 500; // held still before release
+        // held still before release? scale the window with the frame interval so slow devices still register flicks
+        const frameMs = 1000 / Math.max(4, useGame.getState().fps || 60);
+        const stale = performance.now() - d.lastT > Math.max(500, frameMs * 3);
         if (speed > 2 && !stale) {
           const k = Math.min(1, speed / 16);
           s.dispatch({ type: "throw", creatureId: d.creatureId, vx: d.vx * 0.85, vz: d.vz * 0.85, vy: 2.5 + k * 7, player: s.me.id });
@@ -335,7 +337,7 @@ export function Interaction() {
       }
       if (!p) return;
       const dur = performance.now() - p.t;
-      if (!p.moved && dur < 600) tap(e.clientX, e.clientY, p.button);
+      if (!p.moved && dur < 1500) tap(e.clientX, e.clientY, p.button);
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();

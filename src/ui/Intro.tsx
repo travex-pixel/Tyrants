@@ -48,11 +48,13 @@ export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
   };
   return (
     <div className="absolute inset-0 z-30 pointer-events-none">
-      <div className="absolute top-4 right-4 pointer-events-auto">
-        <button className="btn btn-sm" onClick={skip}>
-          Skip intro
-        </button>
-      </div>
+      {stage < 4 && (
+        <div className="absolute top-4 right-4 pointer-events-auto">
+          <button className="btn btn-sm" onClick={skip}>
+            Skip intro
+          </button>
+        </div>
+      )}
       <div className={`absolute left-1/2 -translate-x-1/2 ${stage >= 2 ? "top-[14%]" : "bottom-[18%]"} text-center px-6 transition-opacity duration-700 ${visibleLine ? "opacity-100" : "opacity-0"}`}>
         <div className="text-2xl sm:text-4xl font-black text-[#fff4dc] drop-shadow-[0_4px_16px_rgba(0,0,0,0.7)]" style={{ letterSpacing: "-0.01em", textShadow: "0 2px 0 rgba(60,30,5,0.6), 0 6px 18px rgba(0,0,0,0.6)" }}>
           {LINES[stage]}

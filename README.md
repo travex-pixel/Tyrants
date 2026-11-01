@@ -144,6 +144,16 @@ Design rules that the code follows:
 
 ---
 
+## Art direction
+
+"A handcrafted miniature kingdom floating in a golden-hour sky." Everything is procedural and lives in `src/render/`:
+
+- **Lighting** (`Sky.tsx`, `Post.tsx`): warm directional sun with soft PCF shadows, a sky/ground hemisphere fill, peach distance fog, a shader-noise *sea of clouds* beneath the archipelago, and (High quality only) a light bloom + film grade + vignette pass built from three's bundled `EffectComposer`.
+- **Terrain** (`Terrain.tsx`): vertex-painted moss/meadow patches, damp shoreline dirt, rock on slopes, worn dirt paths that follow the real settlement layout (campfire → buildings) and a baked contact shadow under trees; cliffs are stratified terracotta/sandstone ledges with a mossy overhanging lip; water has depth-shaded teal, shoreline foam and a sun glint; waterfalls spill off the lowest rim.
+- **Vegetation** (`Vegetation.tsx`): four tree silhouettes (oak lobes, layered pine, tiered broadleaf, blossom ornamental) chosen per tree with grove-level tint variation, clustered by noise into groves and clearings; ground cover of tufts, poppies/bluebells, mushrooms at tree feet, pebbles on shores, fallen logs, house gardens, hanging roots and floating rock shards under the rim.
+- **Creatures** (`Creatures.tsx`): one instanced rig (23 body parts) with species body plans — hunched big-eared goblins with oversized hands and loincloths, broad blue-grey trollkins with tusks and a stony back, cream mushroom folk with spotted caps — expressive brows/pupils driven by mood, and a runic selection ring.
+- **UI** (`app/globals.css`): parchment panels in oak frames with bronze trims, a wooden resource bar and island plaque, carved-stone power tokens that gild when active, and a leather-spined field-journal creature panel. Layout is unchanged.
+
 ## Known limitations
 
 - Only the Verdant biome is fully dressed; Ember/Crystal/Frost islands use the biome palette (colours, canopy, crystals) on the same generator.

@@ -33,7 +33,7 @@ function plan(c: Creature) {
     case "goblin":
       // hunched, big head, huge ears, oversized hands, a scrap of loincloth
       return { bodyS: [0.4, 0.46, 0.36], bodyY: 0.4, bodyTilt: 0.28, headS: [0.6, 0.56, 0.56], headY: 0.92, headZ: 0.12, ear: 0.34, earY: 1.06, earAngle: 1.05, cap: 0, armL: 0.4, armW: 0.8, hand: 0.17, legL: 0.28, legW: 0.9, legY: 0.13, eyeS: 0.12, eyeSep: 0.17, eyeY: 0.96, eyeZ: 0.36, nose: 0.1,
-        color: c.variant > 0.7 ? "#78a84a" : c.variant > 0.4 ? "#5f9a3d" : "#4f8a3a", accent: c.variant > 0.5 ? "#b8402f" : "#7a4a2a", belly: "#8a5a36", bellyS: [0.42, 0.16, 0.4], bellyY: 0.24, skinHead: null as string | null };
+        color: c.variant > 0.7 ? "#5c9440" : c.variant > 0.4 ? "#4c8536" : "#3f7a33", accent: c.variant > 0.5 ? "#b8402f" : "#7a4a2a", belly: "#8a5a36", bellyS: [0.42, 0.16, 0.4], bellyY: 0.24, skinHead: null as string | null };
     case "trollkin":
       // broad and heavy: wide body, sunken small head, thick arms, big fists, tusks, stony back
       return { bodyS: [0.82, 0.74, 0.64], bodyY: 0.62, bodyTilt: 0.1, headS: [0.5, 0.42, 0.48], headY: 1.22, headZ: 0.2, ear: 0.1, earY: 1.3, earAngle: 1.3, cap: 0, armL: 0.62, armW: 1.7, hand: 0.24, legL: 0.36, legW: 1.6, legY: 0.17, eyeS: 0.085, eyeSep: 0.15, eyeY: 1.26, eyeZ: 0.42, nose: 0,
@@ -227,7 +227,7 @@ const ITEM_COLORS: Record<string, string> = { wood: "#8a5a36", stone: "#9a9a9a",
 
 function writeCreature(c: Creature, rc: RenderCreature, i: number, t: number, R: Record<PartKey, THREE.InstancedMesh | null>, selected: boolean, hovered: boolean, cam: THREE.Camera) {
   const P = plan(c);
-  const S = c.scale * (c.species === "trollkin" ? 1.05 : c.species === "goblin" ? 0.85 : 0.95);
+  const S = c.scale * (c.species === "trollkin" ? 1.18 : c.species === "goblin" ? 0.98 : 1.06);
   const st = c.state;
   const walking = rc.speed > 0.15 && st !== "held" && st !== "thrown" && st !== "swim" && st !== "recover";
   const ph = rc.phase;
@@ -273,8 +273,8 @@ function writeCreature(c: Creature, rc: RenderCreature, i: number, t: number, R:
   rootM.compose(v, q, new THREE.Vector3(S * sxz, S * sy, S * sxz));
 
   const skin = col.set(P.color);
-  if (c.blessedUntil > 0 && (getWorld()?.time ?? 0) < c.blessedUntil) skin.lerp(new THREE.Color("#ffe39a"), 0.3);
-  if (c.mood === "scared") skin.lerp(new THREE.Color("#dfe6f0"), 0.2);
+  if (c.blessedUntil > 0 && (getWorld()?.time ?? 0) < c.blessedUntil) skin.lerp(new THREE.Color("#ffe39a"), 0.18);
+  if (c.mood === "scared") skin.lerp(new THREE.Color("#dfe6f0"), 0.12);
   if (c.health < 30) skin.lerp(new THREE.Color("#b8c0b0"), 0.3);
   const skinC = skin.clone();
   const accent = new THREE.Color(P.accent);
@@ -295,8 +295,8 @@ function writeCreature(c: Creature, rc: RenderCreature, i: number, t: number, R:
     hide(R, "noseR", i);
   } else if (c.species === "trollkin") {
     const tz = hz + Math.cos(headYaw) * (P.eyeZ - 0.02);
-    setPart(R, "noseL", i, -0.11 + Math.sin(headYaw) * P.eyeZ, P.eyeY - 0.2, tz, 0.3, headYaw, 0.15, 0.07, 0.16, 0.07, col.set(P.accent));
-    setPart(R, "noseR", i, 0.11 + Math.sin(headYaw) * P.eyeZ, P.eyeY - 0.2, tz, 0.3, headYaw, -0.15, 0.07, 0.16, 0.07, col.set(P.accent));
+    setPart(R, "noseL", i, -0.13 + Math.sin(headYaw) * P.eyeZ, P.eyeY - 0.2, tz, 0.3, headYaw, 0.15, 0.09, 0.22, 0.09, col.set(P.accent));
+    setPart(R, "noseR", i, 0.13 + Math.sin(headYaw) * P.eyeZ, P.eyeY - 0.2, tz, 0.3, headYaw, -0.15, 0.09, 0.22, 0.09, col.set(P.accent));
   } else {
     hide(R, "noseL", i);
     hide(R, "noseR", i);
