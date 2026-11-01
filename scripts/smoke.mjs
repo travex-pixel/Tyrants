@@ -54,9 +54,9 @@ await step("grab and throw a creature via pointer", async () => {
   await page.waitForSelector("text=Now throw them", { timeout: 5000 });
   await shot("03-holding");
   // flick
-  for (let i = 0; i < 6; i++) {
-    await page.mouse.move(pos.x + 60 + i * 50, pos.y - 20 - i * 6);
-    await page.waitForTimeout(16);
+  for (let i = 0; i < 8; i++) {
+    await page.mouse.move(pos.x + 60 + i * 45, pos.y - 20 - i * 6);
+    await page.waitForTimeout(25);
   }
   await page.mouse.up();
   await page.waitForTimeout(700);

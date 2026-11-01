@@ -318,7 +318,7 @@ export function Interaction() {
         const d = dragging.current;
         dragging.current = null;
         const speed = Math.hypot(d.vx, d.vz);
-        const stale = performance.now() - d.lastT > 300; // held still before release
+        const stale = performance.now() - d.lastT > 500; // held still before release
         if (speed > 2 && !stale) {
           const k = Math.min(1, speed / 16);
           s.dispatch({ type: "throw", creatureId: d.creatureId, vx: d.vx * 0.85, vz: d.vz * 0.85, vy: 2.5 + k * 7, player: s.me.id });

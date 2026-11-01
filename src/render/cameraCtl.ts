@@ -15,6 +15,7 @@ class CameraController {
   camera: THREE.PerspectiveCamera | null = null;
   followId: number | null = null;
   shake = 0;
+  lastFocus = 0;
 
   pitchFor(d: number) {
     const t = THREE.MathUtils.clamp((d - this.minDist) / (this.maxDist - this.minDist), 0, 1);

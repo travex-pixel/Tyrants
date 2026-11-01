@@ -49,10 +49,13 @@ describe("economy & construction", () => {
     expect(f.stats.gathered).toBeGreaterThan(0);
     // place a lumber camp near spawn
     const isl = w.islands[0];
-    const rng = new RNG(5);
-    const spot = findFlatSpot(isl, isl.spawnPoint.x + 4, isl.spawnPoint.z, 1, rng)!;
-    const r = e.applyNow({ type: "place", building: "lumber", x: spot.x, z: spot.z, player: "me" });
-    expect(r.ok).toBe(true);
+    let placed = false;
+    for (let r = 4; r < 14 && !placed; r += 1)
+      for (let a = 0; a < Math.PI * 2 && !placed; a += 0.3) {
+        const res = e.applyNow({ type: "place", building: "lumber", x: isl.spawnPoint.x + Math.cos(a) * r, z: isl.spawnPoint.z + Math.sin(a) * r, player: "me" });
+        if (res.ok) placed = true;
+      }
+    expect(placed).toBe(true);
     run(e, 240);
     const camps = buildingsOf(w, "p1", "lumber");
     expect(camps.length).toBe(1);

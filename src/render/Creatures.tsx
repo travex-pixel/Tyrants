@@ -18,7 +18,7 @@ const v = new THREE.Vector3();
 const m4 = new THREE.Matrix4();
 const rootM = new THREE.Matrix4();
 
-type PartKey = "body" | "head" | "eyeL" | "eyeR" | "pupilL" | "pupilR" | "earL" | "earR" | "cap" | "armL" | "armR" | "legL" | "legR" | "item" | "hat" | "ring";
+type PartKey = "body" | "head" | "eyeL" | "eyeR" | "pupilL" | "pupilR" | "earL" | "earR" | "cap" | "armL" | "armR" | "legL" | "legR" | "item" | "hat" | "ring" | "handL" | "handR" | "belly" | "noseL" | "noseR" | "browL" | "browR";
 
 function lerpAngle(a: number, b: number, t: number) {
   let d = b - a;
@@ -31,16 +31,22 @@ function lerpAngle(a: number, b: number, t: number) {
 function plan(c: Creature) {
   switch (c.species) {
     case "goblin":
-      return { bodyS: [0.42, 0.5, 0.38], bodyY: 0.42, headS: [0.52, 0.5, 0.5], headY: 0.95, ear: 0.26, earY: 1.08, earAngle: 0.9, cap: 0, armL: 0.42, legL: 0.3, legY: 0.14, eyeS: 0.1, eyeSep: 0.17, eyeY: 0.98, eyeZ: 0.42, color: c.variant > 0.7 ? "#8ac45a" : c.variant > 0.4 ? "#6fb24a" : "#5a9d3f", accent: "#c9415a", skinHead: null as string | null };
+      // hunched, big head, huge ears, oversized hands, a scrap of loincloth
+      return { bodyS: [0.4, 0.46, 0.36], bodyY: 0.4, bodyTilt: 0.28, headS: [0.6, 0.56, 0.56], headY: 0.92, headZ: 0.12, ear: 0.34, earY: 1.06, earAngle: 1.05, cap: 0, armL: 0.4, armW: 0.8, hand: 0.17, legL: 0.28, legW: 0.9, legY: 0.13, eyeS: 0.12, eyeSep: 0.17, eyeY: 0.96, eyeZ: 0.36, nose: 0.1,
+        color: c.variant > 0.7 ? "#78a84a" : c.variant > 0.4 ? "#5f9a3d" : "#4f8a3a", accent: c.variant > 0.5 ? "#b8402f" : "#7a4a2a", belly: "#8a5a36", bellyS: [0.42, 0.16, 0.4], bellyY: 0.24, skinHead: null as string | null };
     case "trollkin":
-      return { bodyS: [0.72, 0.78, 0.6], bodyY: 0.62, headS: [0.52, 0.46, 0.5], headY: 1.3, ear: 0.12, earY: 1.4, earAngle: 1.2, cap: 0, armL: 0.6, legL: 0.42, legY: 0.2, eyeS: 0.085, eyeSep: 0.16, eyeY: 1.33, eyeZ: 0.42, color: c.variant > 0.6 ? "#8a9bb3" : c.variant > 0.3 ? "#7d8fa6" : "#6f7f95", accent: "#d9b36c", skinHead: null };
+      // broad and heavy: wide body, sunken small head, thick arms, big fists, tusks, stony back
+      return { bodyS: [0.82, 0.74, 0.64], bodyY: 0.62, bodyTilt: 0.1, headS: [0.5, 0.42, 0.48], headY: 1.22, headZ: 0.2, ear: 0.1, earY: 1.3, earAngle: 1.3, cap: 0, armL: 0.62, armW: 1.7, hand: 0.24, legL: 0.36, legW: 1.6, legY: 0.17, eyeS: 0.085, eyeSep: 0.15, eyeY: 1.26, eyeZ: 0.42, nose: 0,
+        color: c.variant > 0.6 ? "#8ea3c4" : c.variant > 0.3 ? "#7a92b5" : "#9a9aa6", accent: "#f3ead8", belly: "#5f5a66", bellyS: [0.5, 0.28, 0.5], bellyY: 0.42, skinHead: null };
     default:
-      return { bodyS: [0.32, 0.62, 0.32], bodyY: 0.45, headS: [0.3, 0.26, 0.3], headY: 1.0, ear: 0, earY: 0, earAngle: 0, cap: 0.75, armL: 0.38, legL: 0.26, legY: 0.12, eyeS: 0.09, eyeSep: 0.13, eyeY: 0.95, eyeZ: 0.26, color: "#eadcc0", accent: c.variant > 0.66 ? "#d9643a" : c.variant > 0.33 ? "#c9415a" : "#f0b35a", skinHead: null };
+      // mushroom folk: tall cream stem, a big spotted cap, small arms, round face low on the stem
+      return { bodyS: [0.3, 0.62, 0.3], bodyY: 0.45, bodyTilt: 0, headS: [0.3, 0.26, 0.3], headY: 1.0, headZ: 0, ear: 0, earY: 0, earAngle: 0, cap: 0.95, armL: 0.36, armW: 0.75, hand: 0.1, legL: 0.24, legW: 0.8, legY: 0.11, eyeS: 0.1, eyeSep: 0.12, eyeY: 0.78, eyeZ: 0.27, nose: 0,
+        color: "#efe3cc", accent: c.variant > 0.66 ? "#c9412f" : c.variant > 0.33 ? "#d9823a" : "#b9875a", belly: "#f7efe0", bellyS: [0.001, 0.001, 0.001], bellyY: 0, skinHead: null };
   }
 }
 
 export function Creatures() {
-  const refs = useRef<Record<PartKey, THREE.InstancedMesh | null>>({ body: null, head: null, eyeL: null, eyeR: null, pupilL: null, pupilR: null, earL: null, earR: null, cap: null, armL: null, armR: null, legL: null, legR: null, item: null, hat: null, ring: null });
+  const refs = useRef<Record<PartKey, THREE.InstancedMesh | null>>({ body: null, head: null, eyeL: null, eyeR: null, pupilL: null, pupilR: null, earL: null, earR: null, cap: null, armL: null, armR: null, legL: null, legR: null, item: null, hat: null, ring: null, handL: null, handR: null, belly: null, noseL: null, noseR: null, browL: null, browR: null });
   const quality = useGame((s) => s.settings.quality);
   const geos = useMemo(
     () => ({
@@ -51,12 +57,49 @@ export function Creatures() {
       cap: new THREE.SphereGeometry(0.5, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
       limb: new THREE.CapsuleGeometry(0.1, 0.6, 3, 6),
       item: new THREE.BoxGeometry(0.5, 0.5, 0.5),
-      ring: new THREE.RingGeometry(0.45, 0.6, 24),
+      ring: new THREE.PlaneGeometry(1.4, 1.4),
+      hand: new THREE.SphereGeometry(0.5, 8, 7),
+      nose: new THREE.ConeGeometry(0.5, 1, 6),
+      brow: new THREE.BoxGeometry(1, 0.22, 0.3),
     }),
     [],
   );
   useEffect(() => () => Object.values(geos).forEach((g) => g.dispose()), [geos]);
   const prevStates = useRef(new Map<number, string>());
+  // runic selection ring texture
+  const ringTex = useMemo(() => {
+    if (typeof document === "undefined") return null;
+    const c = document.createElement("canvas");
+    c.width = c.height = 256;
+    const g = c.getContext("2d")!;
+    g.clearRect(0, 0, 256, 256);
+    g.strokeStyle = "#ffffff";
+    g.lineWidth = 7;
+    g.beginPath();
+    g.arc(128, 128, 104, 0, Math.PI * 2);
+    g.stroke();
+    g.lineWidth = 3;
+    g.setLineDash([10, 9]);
+    g.beginPath();
+    g.arc(128, 128, 86, 0, Math.PI * 2);
+    g.stroke();
+    g.setLineDash([]);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      g.beginPath();
+      g.moveTo(128 + Math.cos(a) * 98, 128 + Math.sin(a) * 98);
+      g.lineTo(128 + Math.cos(a) * 118, 128 + Math.sin(a) * 118);
+      g.lineWidth = 5;
+      g.stroke();
+      g.beginPath();
+      g.arc(128 + Math.cos(a + 0.39) * 86, 128 + Math.sin(a + 0.39) * 86, 4, 0, Math.PI * 2);
+      g.fillStyle = "#ffffff";
+      g.fill();
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
 
   useFrame((state, dt) => {
     const w = getWorld();
@@ -140,10 +183,10 @@ export function Creatures() {
   );
   return (
     <group>
-      {mk("body", geos.body, <meshStandardMaterial roughness={0.7} />)}
-      {mk("head", geos.head, <meshStandardMaterial roughness={0.7} />)}
-      {mk("eyeL", geos.eye, <meshStandardMaterial roughness={0.3} color="#ffffff" />, false)}
-      {mk("eyeR", geos.eye, <meshStandardMaterial roughness={0.3} color="#ffffff" />, false)}
+      {mk("body", geos.body, <meshStandardMaterial roughness={0.88} />)}
+      {mk("head", geos.head, <meshStandardMaterial roughness={0.88} />)}
+      {mk("eyeL", geos.eye, <meshStandardMaterial roughness={0.35} color="#fffaf0" />, false)}
+      {mk("eyeR", geos.eye, <meshStandardMaterial roughness={0.35} color="#fffaf0" />, false)}
       {mk("pupilL", geos.eye, <meshStandardMaterial roughness={0.3} color="#1a1a22" />, false)}
       {mk("pupilR", geos.eye, <meshStandardMaterial roughness={0.3} color="#1a1a22" />, false)}
       {mk("earL", geos.ear, <meshStandardMaterial roughness={0.7} />, false)}
@@ -155,7 +198,14 @@ export function Creatures() {
       {mk("legR", geos.limb, <meshStandardMaterial roughness={0.7} />, false)}
       {mk("item", geos.item, <meshStandardMaterial roughness={0.8} />, false)}
       {mk("hat", geos.ear, <meshStandardMaterial roughness={0.6} />, false)}
-      {mk("ring", geos.ring, <meshBasicMaterial color="#ffffff" transparent opacity={0.9} side={THREE.DoubleSide} depthWrite={false} />, false)}
+      {mk("ring", geos.ring, <meshBasicMaterial map={ringTex ?? undefined} color="#ffffff" transparent opacity={0.95} side={THREE.DoubleSide} depthWrite={false} />, false)}
+      {mk("handL", geos.hand, <meshStandardMaterial roughness={0.85} />, false)}
+      {mk("handR", geos.hand, <meshStandardMaterial roughness={0.85} />, false)}
+      {mk("belly", geos.head, <meshStandardMaterial roughness={0.9} />, false)}
+      {mk("noseL", geos.nose, <meshStandardMaterial roughness={0.85} />, false)}
+      {mk("noseR", geos.nose, <meshStandardMaterial roughness={0.85} />, false)}
+      {mk("browL", geos.brow, <meshStandardMaterial roughness={0.9} color="#2b2118" />, false)}
+      {mk("browR", geos.brow, <meshStandardMaterial roughness={0.9} color="#2b2118" />, false)}
     </group>
   );
 }
@@ -229,19 +279,35 @@ function writeCreature(c: Creature, rc: RenderCreature, i: number, t: number, R:
   const skinC = skin.clone();
   const accent = new THREE.Color(P.accent);
 
-  // body
-  setPart(R, "body", i, 0, P.bodyY, 0, 0, 0, 0, P.bodyS[0] * 2 * 0.5, P.bodyS[1] * 2 * 0.5 * (1 + (walking ? 0 : Math.sin(t * 2.5 + i) * 0.02)), P.bodyS[2] * 2 * 0.5, skinC);
+  // body (goblins hunch forward; everyone breathes)
+  const breathe = walking ? 0 : Math.sin(t * 2.5 + i) * 0.025;
+  setPart(R, "body", i, 0, P.bodyY, 0, P.bodyTilt, 0, 0, P.bodyS[0] * (1 + breathe * 0.5), P.bodyS[1] * (1 + breathe), P.bodyS[2], skinC);
+  if (P.bellyS[0] > 0.01) setPart(R, "belly", i, 0, P.bellyY, P.bodyS[2] * 0.55, 0, 0, 0, P.bellyS[0], P.bellyS[1], P.bellyS[2], col.set(P.belly));
+  else hide(R, "belly", i);
   // head
   const headNod = st === "socialise" ? Math.sin(t * 6) * 0.12 : st === "eat" ? Math.sin(t * 10) * 0.2 + 0.2 : st === "idle" ? Math.sin(t * 0.7 + i) * 0.15 : 0;
   const headYaw = st === "idle" ? Math.sin(t * 0.5 + i * 2) * 0.35 : 0;
-  setPart(R, "head", i, 0, P.headY, 0, headNod, headYaw, 0, P.headS[0], P.headS[1], P.headS[2], skinC);
+  const hz = P.headZ;
+  setPart(R, "head", i, 0, P.headY, hz, headNod, headYaw, 0, P.headS[0], P.headS[1], P.headS[2], skinC);
+  // nose / tusks
+  if (c.species === "goblin") {
+    setPart(R, "noseL", i, Math.sin(headYaw) * (P.eyeZ + 0.1), P.eyeY - 0.1, hz + Math.cos(headYaw) * (P.eyeZ + 0.1), Math.PI / 2 + 0.2, headYaw, 0, P.nose, 0.22, P.nose, skinC.clone().offsetHSL(0, 0.05, -0.05));
+    hide(R, "noseR", i);
+  } else if (c.species === "trollkin") {
+    const tz = hz + Math.cos(headYaw) * (P.eyeZ - 0.02);
+    setPart(R, "noseL", i, -0.11 + Math.sin(headYaw) * P.eyeZ, P.eyeY - 0.2, tz, 0.3, headYaw, 0.15, 0.07, 0.16, 0.07, col.set(P.accent));
+    setPart(R, "noseR", i, 0.11 + Math.sin(headYaw) * P.eyeZ, P.eyeY - 0.2, tz, 0.3, headYaw, -0.15, 0.07, 0.16, 0.07, col.set(P.accent));
+  } else {
+    hide(R, "noseL", i);
+    hide(R, "noseR", i);
+  }
   // eyes
   const scared = c.mood === "scared" || st === "held" || st === "thrown" || st === "flee";
   const sleepy = st === "rest";
   const eyeScale = P.eyeS * (scared ? 1.35 : 1);
   const eyeH = sleepy ? eyeScale * 0.15 : c.mood === "grumpy" ? eyeScale * 0.55 : eyeScale;
   const ex = Math.sin(headYaw) * P.eyeZ;
-  const ez = Math.cos(headYaw) * P.eyeZ;
+  const ez = hz + Math.cos(headYaw) * P.eyeZ;
   const eyeY = P.eyeY + Math.sin(headNod) * 0.05;
   setPart(R, "eyeL", i, ex - Math.cos(headYaw) * P.eyeSep, eyeY, ez + Math.sin(headYaw) * P.eyeSep, 0, headYaw, 0, eyeScale, eyeH, eyeScale * 0.7);
   setPart(R, "eyeR", i, ex + Math.cos(headYaw) * P.eyeSep, eyeY, ez - Math.sin(headYaw) * P.eyeSep, 0, headYaw, 0, eyeScale, eyeH, eyeScale * 0.7);
@@ -254,23 +320,33 @@ function writeCreature(c: Creature, rc: RenderCreature, i: number, t: number, R:
     setPart(R, "pupilL", i, ex - Math.cos(headYaw) * P.eyeSep + Math.sin(headYaw) * pz, eyeY, ez + Math.sin(headYaw) * P.eyeSep + Math.cos(headYaw) * pz, 0, headYaw, 0, pupil, pupil * (c.mood === "grumpy" ? 0.6 : 1), pupil * 0.6);
     setPart(R, "pupilR", i, ex + Math.cos(headYaw) * P.eyeSep + Math.sin(headYaw) * pz, eyeY, ez - Math.sin(headYaw) * P.eyeSep + Math.cos(headYaw) * pz, 0, headYaw, 0, pupil, pupil * (c.mood === "grumpy" ? 0.6 : 1), pupil * 0.6);
   }
+  // brows: angry when grumpy/fighting, raised when scared
+  const browTilt = st === "fight" || c.mood === "grumpy" ? 0.45 : scared ? -0.25 : 0.05;
+  const browY = eyeY + eyeScale * 0.95 + (scared ? 0.03 : 0);
+  if (c.species !== "mushroom" && !sleepy) {
+    setPart(R, "browL", i, ex - Math.cos(headYaw) * P.eyeSep, browY, ez + Math.sin(headYaw) * P.eyeSep + 0.01, 0, headYaw, browTilt, eyeScale * 1.4, eyeScale * 0.5, eyeScale * 0.5);
+    setPart(R, "browR", i, ex + Math.cos(headYaw) * P.eyeSep, browY, ez - Math.sin(headYaw) * P.eyeSep + 0.01, 0, headYaw, -browTilt, eyeScale * 1.4, eyeScale * 0.5, eyeScale * 0.5);
+  } else {
+    hide(R, "browL", i);
+    hide(R, "browR", i);
+  }
   // ears / cap
   if (P.ear > 0) {
     const flop = scared ? -0.3 : Math.sin(t * 3 + i) * 0.08;
-    setPart(R, "earL", i, -P.headS[0] * 0.5, P.earY, 0, 0, 0, P.earAngle + flop, P.ear * 0.5, P.ear * 1.6, P.ear * 0.3, skinC);
-    setPart(R, "earR", i, P.headS[0] * 0.5, P.earY, 0, 0, 0, -P.earAngle - flop, P.ear * 0.5, P.ear * 1.6, P.ear * 0.3, skinC);
+    setPart(R, "earL", i, -P.headS[0] * 0.5, P.earY, hz, 0, 0, P.earAngle + flop, P.ear * 0.5, P.ear * 1.6, P.ear * 0.3, skinC);
+    setPart(R, "earR", i, P.headS[0] * 0.5, P.earY, hz, 0, 0, -P.earAngle - flop, P.ear * 0.5, P.ear * 1.6, P.ear * 0.3, skinC);
   } else {
     hide(R, "earL", i);
     hide(R, "earR", i);
   }
   if (P.cap > 0) {
-    setPart(R, "cap", i, 0, P.headY + 0.02, 0, headNod, headYaw, 0, P.cap * 1.3, P.cap * 0.9, P.cap * 1.3, accent);
-    // spots on cap as "hat" cone misuse → small lighter dome
-    setPart(R, "hat", i, 0.18, P.headY + 0.3, 0.1, 0, 0, 0, 0.13, 0.05, 0.13, new THREE.Color("#fff3d6"));
+    setPart(R, "cap", i, 0, P.headY + 0.05, 0, headNod, headYaw, 0, P.cap * 1.45, P.cap * 0.95, P.cap * 1.45, accent);
+    // cream spots on the cap
+    setPart(R, "hat", i, 0.2 + Math.sin(c.variant * 9) * 0.05, P.headY + 0.36, 0.12, 0.2, 0, 0, 0.12, 0.05, 0.12, new THREE.Color("#fff3d6"));
   } else {
     hide(R, "cap", i);
-    if (c.species === "goblin" && c.variant > 0.5) setPart(R, "hat", i, 0, P.headY + 0.28, 0, 0.1, 0, 0.1, 0.42, 0.45, 0.42, accent);
-    else if (c.species === "trollkin" && c.variant > 0.5) setPart(R, "hat", i, 0, P.headY + 0.3, 0, 0, 0, 0, 0.3, 0.2, 0.3, new THREE.Color("#3a2f28"));
+    if (c.species === "goblin" && c.variant > 0.5) setPart(R, "hat", i, 0, P.headY + 0.3, hz, 0.1, 0, 0.1, 0.42, 0.5, 0.42, accent);
+    else if (c.species === "trollkin") setPart(R, "hat", i, 0, P.bodyY + P.bodyS[1] * 0.75, -P.bodyS[2] * 0.6, -0.9, 0, 0, 0.42, 0.28, 0.42, new THREE.Color("#6a7688"));
     else hide(R, "hat", i);
   }
   // arms & legs
@@ -307,12 +383,32 @@ function writeCreature(c: Creature, rc: RenderCreature, i: number, t: number, R:
   }
   const shoulderY = P.bodyY + P.bodyS[1] * 0.55;
   const armS = P.armL / 0.8;
-  setPart(R, "armL", i, -P.bodyS[0] * 0.95, shoulderY, 0, armLx, 0, armLz, armS * 0.9, armS, armS * 0.9, skinC);
-  setPart(R, "armR", i, P.bodyS[0] * 0.95, shoulderY, 0, armRx, 0, armRz, armS * 0.9, armS, armS * 0.9, skinC);
-  const legSwing = walking ? Math.sin(ph) * 0.8 * Math.min(1, rc.speed) : st === "held" ? Math.sin(t * 6) * 0.5 : 0;
+  const ax = P.bodyS[0] * 0.95;
+  // limbs pivot at the shoulder/hip: offset the capsule centre half a length down the rotated axis
+  const pivot = (rx: number, rz: number, len: number) => ({ x: len * Math.sin(rz), y: -len * Math.cos(rz) * Math.cos(rx), z: -len * Math.cos(rz) * Math.sin(rx) });
+  const halfArm = 0.8 * armS * 0.5;
+  const pl = pivot(armLx, armLz, halfArm);
+  const pr = pivot(armRx, armRz, halfArm);
+  setPart(R, "armL", i, -ax + pl.x, shoulderY + pl.y, pl.z, armLx, 0, armLz, armS * P.armW, armS, armS * P.armW, skinC);
+  setPart(R, "armR", i, ax + pr.x, shoulderY + pr.y, pr.z, armRx, 0, armRz, armS * P.armW, armS, armS * P.armW, skinC);
+  // hands sit at the arm ends: capsule of length ~0.8*armS rotated by Euler(rx, 0, rz) about the shoulder
+  const handAt = (sign: number, rx: number, rz: number) => {
+    const L = 0.8 * armS * 0.5 + P.hand * 0.6;
+    const ox = L * Math.sin(rz);
+    const oy = -L * Math.cos(rz) * Math.cos(rx);
+    const oz = -L * Math.cos(rz) * Math.sin(rx);
+    setPart(R, sign > 0 ? "handR" : "handL", i, sign * ax + ox, shoulderY + oy, oz, rx * 0.5, 0, 0, P.hand, P.hand * 0.85, P.hand * 1.1, skinC.clone().offsetHSL(0, 0.03, 0.02));
+  };
+  handAt(-1, armLx, armLz);
+  handAt(1, armRx, armRz);
+  const legSwing = walking ? Math.sin(ph) * (c.species === "trollkin" ? 0.55 : 0.85) * Math.min(1, rc.speed) : st === "held" ? Math.sin(t * 6) * 0.5 : 0;
   const legS = P.legL / 0.8;
-  setPart(R, "legL", i, -P.bodyS[0] * 0.45, P.legY + P.legL * 0.3, 0, legSwing, 0, 0, legS, legS, legS, skinC.clone().offsetHSL(0, 0, -0.1));
-  setPart(R, "legR", i, P.bodyS[0] * 0.45, P.legY + P.legL * 0.3, 0, -legSwing, 0, 0, legS, legS, legS, skinC.clone().offsetHSL(0, 0, -0.1));
+  const hipY = P.bodyY - P.bodyS[1] * 0.35;
+  const halfLeg = 0.8 * legS * 0.5;
+  const ll = pivot(legSwing, 0, halfLeg);
+  const lr = pivot(-legSwing, 0, halfLeg);
+  setPart(R, "legL", i, -P.bodyS[0] * 0.45, hipY + ll.y, ll.z, legSwing, 0, 0, legS * P.legW, legS, legS * P.legW, skinC.clone().offsetHSL(0, 0, -0.1));
+  setPart(R, "legR", i, P.bodyS[0] * 0.45, hipY + lr.y, lr.z, -legSwing, 0, 0, legS * P.legW, legS, legS * P.legW, skinC.clone().offsetHSL(0, 0, -0.1));
   // carried item
   if (c.carrying) {
     const ic = col.set(ITEM_COLORS[c.carrying.type] ?? "#ffffff");
@@ -326,10 +422,12 @@ function writeCreature(c: Creature, rc: RenderCreature, i: number, t: number, R:
       e.set(-Math.PI / 2, 0, 0);
       q.setFromEuler(e);
       v.set(rc.x, rc.y + 0.04, rc.z);
-      const rs = (selected ? 1.3 : 1.0) * S * (1 + Math.sin(t * 5) * 0.05);
+      const rs = (selected ? 1.35 : 1.05) * S * (1 + Math.sin(t * 4) * 0.04);
+      e.set(-Math.PI / 2, 0, selected ? t * 0.6 : 0);
+      q.setFromEuler(e);
       m4.compose(v, q, new THREE.Vector3(rs, rs, rs));
       ring.setMatrixAt(i, m4);
-      ring.setColorAt(i, col.set(selected ? "#ffd166" : "#ffffff"));
+      ring.setColorAt(i, col.set(selected ? "#ffcf6b" : "#fff2d0"));
     }
   } else hide(R, "ring", i);
   void cam;

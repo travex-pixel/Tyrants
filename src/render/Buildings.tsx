@@ -96,10 +96,12 @@ const BuildingMesh = memo(function BuildingMesh({ info }: { info: BInfo }) {
   });
 
   const matProps = ghost ? { transparent: true, opacity: 0.4 } : {};
-  const wood = "#8a5a36";
-  const woodLight = "#b07a4a";
-  const stone = "#8f8a80";
-  const roof = info.faction === "p1" ? "#c9553f" : info.color;
+  const wood = "#7d5234";
+  const woodLight = "#a9784b";
+  const stone = "#8e8a82";
+  const plaster = "#e6d6b6";
+  const slate = "#5c6876";
+  const roof = info.faction === "p1" ? slate : info.color;
   const shadows = quality !== "low";
 
   const body = (() => {
@@ -137,11 +139,17 @@ const BuildingMesh = memo(function BuildingMesh({ info }: { info: BInfo }) {
           <>
             <mesh position={[0, 0.5, 0]} castShadow={shadows} receiveShadow>
               <boxGeometry args={[1.6, 1.0, 1.4]} />
-              <meshStandardMaterial color={woodLight} {...matProps} />
+              <meshStandardMaterial color={woodLight} roughness={1} {...matProps} />
             </mesh>
+            {[-0.5, 0, 0.5].map((x) => (
+              <mesh key={x} position={[x, 0.5, 0.72]}>
+                <boxGeometry args={[0.08, 1.0, 0.04]} />
+                <meshStandardMaterial color={wood} {...matProps} />
+              </mesh>
+            ))}
             <mesh position={[0, 1.35, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={shadows}>
               <coneGeometry args={[1.45, 0.8, 4]} />
-              <meshStandardMaterial color={roof} {...matProps} flatShading />
+              <meshStandardMaterial color="#b58a4c" {...matProps} flatShading roughness={1} />
             </mesh>
             <mesh position={[0, 0.3, 0.71]}>
               <boxGeometry args={[0.45, 0.6, 0.05]} />
@@ -168,7 +176,7 @@ const BuildingMesh = memo(function BuildingMesh({ info }: { info: BInfo }) {
             )}
             <mesh position={[0, 1.5, 0]} rotation={[0.18, 0, 0]} castShadow={shadows}>
               <boxGeometry args={[2.1, 0.1, 1.9]} />
-              <meshStandardMaterial color={roof} {...matProps} />
+              <meshStandardMaterial color="#b58a4c" roughness={1} {...matProps} />
             </mesh>
             {[0, 1, 2, 3, 4].map((k) => (
               <mesh key={k} position={[-0.5 + (k % 3) * 0.3, 0.15 + Math.floor(k / 3) * 0.28, 0]} rotation={[Math.PI / 2, 0, 0]}>
@@ -210,13 +218,23 @@ const BuildingMesh = memo(function BuildingMesh({ info }: { info: BInfo }) {
       case "house":
         return (
           <>
-            <mesh position={[0, 0.65, 0]} castShadow={shadows} receiveShadow>
-              <boxGeometry args={[1.7, 1.3, 1.5]} />
-              <meshStandardMaterial color="#e8d8b8" {...matProps} />
+            <mesh position={[0, 0.3, 0]} castShadow={shadows} receiveShadow>
+              <boxGeometry args={[1.8, 0.6, 1.6]} />
+              <meshStandardMaterial color={stone} roughness={1} {...matProps} flatShading />
             </mesh>
+            <mesh position={[0, 0.9, 0]} castShadow={shadows} receiveShadow>
+              <boxGeometry args={[1.7, 0.8, 1.5]} />
+              <meshStandardMaterial color={plaster} roughness={1} {...matProps} />
+            </mesh>
+            {[-0.85, 0.85].map((x) => (
+              <mesh key={x} position={[x, 0.9, 0]}>
+                <boxGeometry args={[0.08, 0.8, 1.52]} />
+                <meshStandardMaterial color={wood} {...matProps} />
+              </mesh>
+            ))}
             <mesh position={[0, 1.7, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={shadows}>
               <coneGeometry args={[1.5, 1.0, 4]} />
-              <meshStandardMaterial color={roof} {...matProps} flatShading />
+              <meshStandardMaterial color={roof} {...matProps} flatShading roughness={1} />
             </mesh>
             <mesh position={[0.5, 1.9, -0.3]}>
               <boxGeometry args={[0.25, 0.6, 0.25]} />
@@ -237,7 +255,11 @@ const BuildingMesh = memo(function BuildingMesh({ info }: { info: BInfo }) {
           <>
             <mesh position={[0, 0.8, 0]} castShadow={shadows} receiveShadow>
               <boxGeometry args={[2.6, 1.6, 2.2]} />
-              <meshStandardMaterial color="#c9b79c" {...matProps} />
+              <meshStandardMaterial color={stone} roughness={1} {...matProps} flatShading />
+            </mesh>
+            <mesh position={[0, 1.2, 0]} castShadow={shadows}>
+              <boxGeometry args={[2.62, 0.7, 2.22]} />
+              <meshStandardMaterial color={plaster} roughness={1} {...matProps} />
             </mesh>
             <mesh position={[0, 2.0, 0]} rotation={[0, 0, 0]} castShadow={shadows}>
               <boxGeometry args={[2.9, 0.15, 2.5]} />
@@ -407,11 +429,11 @@ function DiscoveryMesh({ d }: { d: { id: number; kind: string; x: number; y: num
             <cylinderGeometry args={[0.04, 0.07, 0.7, 5]} />
             <meshStandardMaterial color="#3f7d4f" />
           </mesh>
-          <mesh ref={glow} position={[0, 0.8, 0]}>
-            <sphereGeometry args={[0.26, 10, 8]} />
-            <meshStandardMaterial color="#b388ff" emissive="#9d6bff" emissiveIntensity={1.5} />
+          <mesh ref={glow} position={[0, 0.72, 0]}>
+            <sphereGeometry args={[0.14, 10, 8]} />
+            <meshStandardMaterial color="#c9a6ff" emissive="#9d6bff" emissiveIntensity={1.2} />
           </mesh>
-          <pointLight position={[0, 1, 0]} color="#b388ff" intensity={1.8} distance={6} decay={2} />
+          <pointLight position={[0, 0.9, 0]} color="#b388ff" intensity={1.0} distance={4} decay={2} />
         </group>
       );
     case "ruins":

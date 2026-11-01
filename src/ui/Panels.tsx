@@ -58,10 +58,10 @@ export function CreaturePanel({ id }: { id: number }) {
   const memory = c.memory.slice(-3).reverse();
   const moodText = c.state === "held" ? "Please put me down" : c.mood === "scared" ? "Terrified" : c.mood === "happy" ? "Cheerful" : c.mood === "grumpy" ? "Grumpy" : "Fine, I suppose";
   return (
-    <div className="absolute left-3 bottom-[96px] sm:bottom-3 w-[min(94vw,340px)] panel p-3 pop" style={{ pointerEvents: "auto" }}>
+    <div className="absolute left-3 bottom-[96px] sm:bottom-3 w-[min(94vw,350px)] panel journal p-3 pop" style={{ pointerEvents: "auto" }}>
       <div className="row">
-        <span className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center" style={{ background: sp.color }}>
-          <span className="w-3 h-3 rounded-full bg-white/80" />
+        <span className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center border-2 border-[#5a3a20] shadow-[inset_0_2px_0_rgba(255,255,255,0.4)]" style={{ background: sp.color }}>
+          <span className="w-2 h-2 rounded-full bg-[#2b2118] mr-1" /><span className="w-2 h-2 rounded-full bg-[#2b2118]" />
         </span>
         <div className="flex-1 min-w-0">
           {editing ? (
@@ -101,18 +101,18 @@ export function CreaturePanel({ id }: { id: number }) {
             {TRAITS[t].name}
           </span>
         ))}
-        {w.time < c.blessedUntil && <span className="chip" style={{ padding: "3px 8px", fontSize: 11, color: "#ffe08a" }}>Blessed</span>}
+        {w.time < c.blessedUntil && <span className="chip" style={{ padding: "3px 8px", fontSize: 11, color: "#7a4a10" }}>Blessed</span>}
       </div>
       <div className="flex gap-2 mt-3">
-        <Bar v={100 - c.hunger} color="#ff8fa3" label="Food" />
-        <Bar v={c.energy} color="#5fb3f0" label="Energy" />
-        <Bar v={c.happiness} color="#ffd166" label="Mood" />
-        <Bar v={c.health} color="#7ee787" label="Health" />
+        <Bar v={100 - c.hunger} color="#c9412f" label="Food" />
+        <Bar v={c.energy} color="#3f7fb0" label="Energy" />
+        <Bar v={c.happiness} color="#e9a93c" label="Mood" />
+        <Bar v={c.health} color="#4f8a3a" label="Health" />
       </div>
       <div className="mt-3 row text-[12px] font-semibold flex-wrap" style={{ gap: 6 }}>
         <span className="label">Skills</span>
         {skills.slice(0, 3).map((sk) => (
-          <span key={sk.k} className={`chip ${sk.lvl >= 5 ? "text-[#ffe08a]" : ""}`} style={{ padding: "3px 8px", fontSize: 11 }}>
+          <span key={sk.k} className={`chip ${sk.lvl >= 5 ? "text-[#7a4a10]" : ""}`} style={{ padding: "3px 8px", fontSize: 11 }}>
             {SKILLS[sk.k].name} {sk.lvl}
           </span>
         ))}
@@ -122,7 +122,7 @@ export function CreaturePanel({ id }: { id: number }) {
         <div className="mt-2 text-[12px] font-semibold row flex-wrap" style={{ gap: 6 }}>
           <span className="label">Feels</span>
           {rels.map((r) => (
-            <button key={r.id} className="chip" style={{ padding: "3px 8px", fontSize: 11, color: r.v > 0 ? "#b6f3bd" : "#ffb3b3" }} onClick={() => select(r.id)}>
+            <button key={r.id} className="chip" style={{ padding: "3px 8px", fontSize: 11, color: r.v > 0 ? "var(--good)" : "var(--bad)" }} onClick={() => select(r.id)}>
               {r.v >= 60 ? "❤" : r.v > 0 ? "+" : r.v <= -50 ? "✕" : "−"} {r.name}
             </button>
           ))}
@@ -175,7 +175,7 @@ export function BuildingPanel({ id }: { id: number }) {
   const mine = b.faction === s.myFaction;
   const occupants = b.occupants.map((o) => w.creatures[o]?.name).filter(Boolean);
   return (
-    <div className="absolute left-3 bottom-[96px] sm:bottom-3 w-[min(94vw,320px)] panel p-3 pop" style={{ pointerEvents: "auto" }}>
+    <div className="absolute left-3 bottom-[96px] sm:bottom-3 w-[min(94vw,330px)] panel journal p-3 pop" style={{ pointerEvents: "auto" }}>
       <div className="row">
         <div className="flex-1">
           <div className="h1">{def.name}</div>
@@ -209,7 +209,7 @@ export function BuildingPanel({ id }: { id: number }) {
         <div className="mt-3">
           <div className="label mb-1">{b.cropTimer >= 1 ? "Ripe! Waiting for a farmer" : `Crops growing · ${Math.round(b.cropTimer * 100)}%`}</div>
           <div className="bar">
-            <i style={{ width: `${b.cropTimer * 100}%`, background: "#7ee787" }} />
+            <i style={{ width: `${b.cropTimer * 100}%`, background: "#4f8a3a" }} />
           </div>
         </div>
       )}
@@ -316,7 +316,7 @@ export function ChroniclePanel() {
         {entries.map((e) => (
           <button
             key={e.id}
-            className={`text-left px-3 py-2 rounded-xl text-[13px] font-semibold ${e.importance >= 3 ? "bg-[rgba(242,184,75,0.12)]" : e.importance === 2 ? "bg-white/5" : ""}`}
+            className={`text-left px-3 py-2 rounded-xl text-[13px] font-semibold ${e.importance >= 3 ? "bg-[rgba(233,169,60,0.22)]" : e.importance === 2 ? "bg-[rgba(90,58,32,0.08)]" : ""}`}
             onClick={() => {
               if (e.x !== undefined && e.z !== undefined) useGame.getState().focusCamera(e.x, e.z, 18);
             }}
@@ -349,7 +349,7 @@ export function RivalPanel({ islandId }: { islandId?: number }) {
         const isl = w.islands.find((i) => i.id === f.homeIslandId);
         const rel = sum.relation;
         return (
-          <div key={f.id} className="panel p-3" style={{ background: "rgba(255,255,255,0.04)" }}>
+          <div key={f.id} className="p-3 rounded-xl" style={{ background: "rgba(90,58,32,0.08)", border: "1px solid rgba(90,58,32,0.25)" }}>
             <div className="row">
               <span className="w-3 h-3 rounded-full" style={{ background: f.color }} />
               <div className="flex-1">
@@ -358,7 +358,7 @@ export function RivalPanel({ islandId }: { islandId?: number }) {
               </div>
             </div>
             <div className="row mt-2 flex-wrap" style={{ gap: 6 }}>
-              <span className="chip" style={{ fontSize: 12, color: rel <= -25 ? "#ffb3b3" : rel >= 25 ? "#b6f3bd" : undefined }}>{relationLabel(rel)} ({Math.round(rel)})</span>
+              <span className="chip" style={{ fontSize: 12, color: rel <= -25 ? "var(--bad)" : rel >= 25 ? "var(--good)" : undefined }}>{relationLabel(rel)} ({Math.round(rel)})</span>
               <span className="chip" style={{ fontSize: 12 }}>{sum.pop} creatures</span>
               <span className="chip" style={{ fontSize: 12 }}>{sum.complete} buildings</span>
               <span className="chip" style={{ fontSize: 12 }}>Score {sum.score}</span>
@@ -369,7 +369,7 @@ export function RivalPanel({ islandId }: { islandId?: number }) {
               <div className="muted text-[11px] font-semibold mt-1">Remembers: {f.aiMemory.slice(-3).map((m) => m.text).join(" ")}</div>
             )}
             {f.tradeOffers.map((o) => (
-              <div key={o.id} className="mt-2 panel p-2" style={{ background: "rgba(242,184,75,0.1)", borderColor: "rgba(242,184,75,0.3)" }}>
+              <div key={o.id} className="mt-2 p-2 rounded-lg" style={{ background: "rgba(233,169,60,0.2)", border: "1px solid rgba(122,77,20,0.4)" }}>
                 <div className="text-[12px] font-bold">Trade offer: {o.text}</div>
                 <div className="flex gap-2 mt-1">
                   <button className="btn btn-sm btn-primary flex-1" onClick={() => { const r = s.dispatch({ type: "trade", offerId: o.id, accept: true, player: s.me.id }); if (!r.ok) useGame.getState().toast(r.reason, "bad"); }}>Accept</button>
@@ -406,7 +406,7 @@ export function RivalPanel({ islandId }: { islandId?: number }) {
   );
   if (islandId !== undefined) {
     return (
-      <div className="absolute left-3 bottom-[96px] sm:bottom-3 w-[min(94vw,360px)] panel p-3 pop scroll" style={{ pointerEvents: "auto", maxHeight: "60vh" }}>
+      <div className="absolute left-3 bottom-[96px] sm:bottom-3 w-[min(94vw,370px)] panel journal p-3 pop scroll" style={{ pointerEvents: "auto", maxHeight: "60vh" }}>
         <div className="row mb-2">
           <div className="h1 flex-1">{w.islands.find((i) => i.id === islandId)?.name}</div>
           <button className="btn btn-sm btn-ghost" onClick={() => useGame.getState().selectIsland(null)}>
@@ -478,7 +478,7 @@ export function PlayersPanel({ actions }: { actions: { createRoom: (mode: "share
       ) : (
         <div className="flex flex-col gap-3">
           {!supabaseConfigured() && (
-            <div className="panel text-[12px] font-semibold" style={{ padding: 10, background: "rgba(255,107,107,0.12)", borderColor: "rgba(255,107,107,0.3)" }}>
+            <div className="text-[12px] font-semibold rounded-lg" style={{ padding: 10, background: "rgba(169,58,42,0.12)", border: "1px solid rgba(169,58,42,0.4)" }}>
               Multiplayer needs Supabase credentials. Everything else works offline. See README.md.
             </div>
           )}
@@ -514,7 +514,7 @@ export function AchievementsPanel() {
           .slice()
           .sort((a, b) => (b.unlockedAt !== null ? 1 : 0) - (a.unlockedAt !== null ? 1 : 0))
           .map((a) => (
-            <div key={a.id} className={`row px-3 py-2 rounded-xl ${a.unlockedAt !== null ? "bg-[rgba(242,184,75,0.12)]" : "opacity-60"}`}>
+            <div key={a.id} className={`row px-3 py-2 rounded-xl ${a.unlockedAt !== null ? "bg-[rgba(233,169,60,0.2)]" : "opacity-60"}`}>
               <Icons.trophy style={{ width: 18, height: 18, color: a.unlockedAt !== null ? "var(--accent)" : "var(--muted)" }} />
               <div className="flex-1">
                 <div className="text-[13px] font-bold">{a.title}</div>
@@ -600,7 +600,7 @@ export function PausePanel({ actions }: { actions: { leaveToMenu: () => Promise<
   const saved = useMemo(() => (w ? timeAgo(w.meta.savedAt) : ""), [w]);
   if (!s || !w) return null;
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-black/30 backdrop-blur-[2px]" style={{ pointerEvents: "auto" }} onClick={() => setPanel("none")}>
+    <div className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-[rgba(30,15,5,0.35)] backdrop-blur-[2px]" style={{ pointerEvents: "auto" }} onClick={() => setPanel("none")}>
       <div className="panel p-5 w-full max-w-sm pop" onClick={(e) => e.stopPropagation()}>
         <div className="row mb-3">
           <div className="title text-2xl flex-1">Little Tyrants</div>

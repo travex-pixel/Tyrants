@@ -208,7 +208,7 @@ function Friends({ onBack, actions, initialCode }: { onBack: () => void; actions
     <div className="flex flex-col gap-3 fade-up">
       <div className="h1">Play with Friends</div>
       {!ok && (
-        <div className="panel text-[13px] font-semibold" style={{ padding: 12, background: "rgba(255,107,107,0.12)", borderColor: "rgba(255,107,107,0.3)" }}>
+        <div className="text-[13px] font-semibold rounded-lg" style={{ padding: 12, background: "rgba(169,58,42,0.12)", border: "1px solid rgba(169,58,42,0.4)" }}>
           Multiplayer is switched off because this deployment has no Supabase credentials. Solo, Sandbox and Challenges work without them. See README.md for a 5-minute setup.
         </div>
       )}
@@ -221,7 +221,7 @@ function Friends({ onBack, actions, initialCode }: { onBack: () => void; actions
           </button>
         </div>
       </div>
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-[rgba(90,58,32,0.25)]" />
       <div>
         <div className="label mb-1">Create a world</div>
         <div className="flex gap-2 mb-2">

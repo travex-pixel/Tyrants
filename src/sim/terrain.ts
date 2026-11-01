@@ -113,9 +113,9 @@ export function generateIsland(o: IslandGenOptions): Island {
       if (mask <= 0.02) continue; // void
       const edge = Math.min(1, mask / 0.3); // 0 at coast .. 1 inland
       const hills = fbm(vx * freq * 2.5, vz * freq * 2.5, hillSeed, 4) - 0.45;
-      let h = waterLevel + 0.12 + edge * 0.9 + hills * 2.6 * Math.pow(edge, 0.6);
+      let h = waterLevel + 0.12 + edge * 0.9 + hills * 3.3 * Math.pow(edge, 0.6);
       // central mountain-ish bump
-      h += Math.max(0, mask - 0.55) * 2.4;
+      h += Math.max(0, mask - 0.55) * 2.0;
       // lakes
       if (lakes) {
         const lk = fbm(vx * freq * 2.2 + 50, vz * freq * 2.2 + 50, lakeSeed, 3);

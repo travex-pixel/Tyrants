@@ -297,8 +297,8 @@ export default function Game() {
       {screen === "boot" && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center fade-up">
-            <div className="title text-5xl">Little Tyrants</div>
-            <div className="muted mt-3">Small worlds. Big egos.</div>
+            <div className="title-dark text-5xl">Little Tyrants</div>
+            <div className="mt-3 text-[#cdb089] font-bold">Small worlds. Big egos.</div>
           </div>
         </div>
       )}
@@ -312,7 +312,7 @@ export default function Game() {
         </>
       )}
       {busy && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(30,15,5,0.45)] backdrop-blur-sm">
           <div className="panel px-8 py-6 text-center pop">
             <div className="h1 pulse">{busy}</div>
           </div>
@@ -378,6 +378,13 @@ if (typeof window !== "undefined") {
       const w = s.world;
       const cf = Object.values(w.buildings).find((b) => b.type === "campfire" && b.faction === s.myFaction);
       if (cf) useGame.getState().focusCamera(cf.x, cf.z, zoom);
+    },
+    focusSelected: (zoom: number) => {
+      const s = getSession();
+      const id = useGame.getState().selectedCreature;
+      if (!s || id === null) return;
+      const c = s.world.creatures[id];
+      if (c) useGame.getState().focusCamera(c.x, c.z, zoom);
     },
     buildingCount: () => {
       const s = getSession();

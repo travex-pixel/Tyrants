@@ -82,7 +82,7 @@ export function Hud({ actions }: { actions: HudActions }) {
       {/* Top bar */}
       {!hideForIntro && (
         <div className="absolute top-3 left-3 right-3 flex items-start gap-2 flex-wrap">
-          <div className="panel row px-3 py-2 fade-up" style={{ gap: 6 }}>
+          <div className="bar-wood row px-3 py-2 fade-up" style={{ gap: 6 }}>
             <div className="row" style={{ gap: 6 }} title={w.meta.name}>
               {night ? <Icons.moon style={{ width: 16, height: 16, color: "#9ecbff" }} /> : <Icons.sun style={{ width: 16, height: 16, color: "#ffd166" }} />}
               <span className="font-bold text-sm hidden sm:inline max-w-[140px] truncate">{w.meta.name}</span>
@@ -90,16 +90,18 @@ export function Hud({ actions }: { actions: HudActions }) {
                 Day {w.day} · {String(hour).padStart(2, "0")}:00
               </span>
             </div>
-            <span className="w-px h-5 bg-white/10 mx-1" />
-            <Chip icon="wood" value={Math.floor(f.stock.wood)} title="Wood" color="#d9a066" />
-            <Chip icon="stone" value={Math.floor(f.stock.stone)} title="Stone" color="#c7c7c7" />
-            <Chip icon="food" value={Math.floor(f.stock.food)} title="Food" color="#ff8fa3" />
-            <Chip icon="essence" value={Math.floor(f.essence)} title="Essence — earned from discoveries and achievements; unlocks powers" color="#c7a6ff" />
+            <span className="w-px h-5 bg-[rgba(60,30,10,0.4)] mx-1" />
+            <Chip icon="wood" value={Math.floor(f.stock.wood)} title="Wood" color="#7a4a22" />
+            <Chip icon="stone" value={Math.floor(f.stock.stone)} title="Stone" color="#4f5a66" />
+            <Chip icon="food" value={Math.floor(f.stock.food)} title="Food" color="#a93a2a" />
+            <Chip icon="essence" value={Math.floor(f.essence)} title="Essence — earned from discoveries and achievements; unlocks powers" color="#6a4aa8" />
             <Chip icon="pop" value={pop} title="Population" />
-            {s.engine?.paused && <span className="chip" style={{ color: "var(--accent)" }}>Paused</span>}
+            {s.engine?.paused && <span className="chip" style={{ color: "#7a4a10" }}>Paused</span>}
           </div>
-          <div className="flex-1" />
-          <div className="panel row p-1.5 fade-up" style={{ gap: 4 }}>
+          <div className="flex-1 flex justify-center">
+            <div className="plaque hidden md:inline-block fade-up" title={w.meta.name}>{w.meta.name}</div>
+          </div>
+          <div className="bar-wood row p-1.5 fade-up" style={{ gap: 4 }}>
             <IconButton icon="hammer" title="Build (B)" active={panel === "build"} onClick={() => setPanel("build")} />
             <IconButton icon="book" title="Chronicle (C)" active={panel === "chronicle"} badge={unread} onClick={() => setPanel("chronicle")} />
             <IconButton icon="flag" title="Rival Overlords" active={panel === "rivals"} onClick={() => setPanel("rivals")} />
@@ -113,7 +115,7 @@ export function Hud({ actions }: { actions: HudActions }) {
       {/* Toasts */}
       <div className="absolute top-[64px] left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 w-[min(92vw,520px)]">
         {toasts.map((t) => (
-          <div key={t.id} className={`panel toast px-4 py-2 text-sm font-bold text-center ${t.kind === "bad" ? "text-[#ffb3b3]" : t.kind === "good" ? "text-[#b6f3bd]" : t.kind === "story" ? "text-[#ffe08a]" : ""}`} style={{ pointerEvents: "auto" }} onClick={() => dismiss(t.id)}>
+          <div key={t.id} className={`toast-parch toast px-4 py-2 text-sm font-bold text-center ${t.kind === "bad" ? "text-[var(--bad)]" : t.kind === "good" ? "text-[var(--good)]" : t.kind === "story" ? "text-[#7a4a10]" : ""}`} style={{ pointerEvents: "auto" }} onClick={() => dismiss(t.id)}>
             {t.text}
           </div>
         ))}
@@ -125,7 +127,7 @@ export function Hud({ actions }: { actions: HudActions }) {
           {story.slice(-3).map((e) => (
             <button
               key={e.id}
-              className="panel px-3 py-1.5 text-[12px] font-semibold text-right fade-up"
+              className="toast-parch px-3 py-1.5 text-[12px] font-bold text-right fade-up"
               style={{ pointerEvents: "auto", opacity: 0.9 }}
               onClick={() => {
                 if (e.x !== undefined && e.z !== undefined) useGame.getState().focusCamera(e.x, e.z, 18);
@@ -144,7 +146,7 @@ export function Hud({ actions }: { actions: HudActions }) {
             <div className="panel row p-1.5 pop" style={{ gap: 4 }}>
               {(Object.keys(SPECIES) as (keyof typeof SPECIES)[]).map((id) => (
                 <button key={id} className={`btn btn-sm ${species === id ? "btn-primary" : ""}`} title={SPECIES[id].blurb} onClick={() => { setSpecies(id); audio.click(); }}>
-                  <span className="w-3 h-3 rounded-full" style={{ background: SPECIES[id].color }} /> {SPECIES[id].name}
+                  <span className="w-3 h-3 rounded-full border border-[#4a3522]" style={{ background: SPECIES[id].color }} /> {SPECIES[id].name}
                 </button>
               ))}
             </div>
@@ -223,7 +225,7 @@ export function Hud({ actions }: { actions: HudActions }) {
       {panel === "pause" && <PausePanel actions={actions} />}
 
       {/* FPS (debug, tiny) */}
-      <div className="absolute bottom-1 left-2 text-[10px] font-bold muted opacity-50">{fps} fps{net.connected ? ` · ${net.role}${net.latency ? ` ${net.latency}ms` : ""}` : ""}</div>
+      <div className="absolute bottom-1 left-2 text-[10px] font-bold text-white/60">{fps} fps{net.connected ? ` · ${net.role}${net.latency ? ` ${net.latency}ms` : ""}` : ""}</div>
       <span className="hidden">{tick}</span>
     </div>
   );
@@ -253,7 +255,7 @@ export function Drawer({ title, children, wide, onClose }: { title: string; chil
   const setPanel = useGame((s) => s.setPanel);
   return (
     <div className={`absolute right-3 top-[64px] bottom-[96px] sm:bottom-3 ${wide ? "w-[min(94vw,520px)]" : "w-[min(94vw,400px)]"} panel flex flex-col pop`} style={{ pointerEvents: "auto" }}>
-      <div className="row px-4 py-3 border-b border-white/10">
+      <div className="row px-4 py-3 border-b border-[rgba(90,58,32,0.25)]">
         <div className="h1 flex-1">{title}</div>
         <button className="btn btn-sm btn-ghost" onClick={() => (onClose ? onClose() : setPanel("none"))}>
           <Icons.close style={{ width: 16, height: 16 }} />

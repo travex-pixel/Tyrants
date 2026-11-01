@@ -99,10 +99,13 @@ export const DEFAULT_SETTINGS: Settings = { master: 0.8, sfx: 0.9, ambient: 0.6,
 
 export function loadSettings(): Settings {
   if (typeof localStorage === "undefined") return DEFAULT_SETTINGS;
+  // sensible default for phones/tablets: medium (no post-processing, lighter shadows)
+  const mobile = typeof navigator !== "undefined" && navigator.maxTouchPoints > 0 && Math.min(window.innerWidth, window.innerHeight) < 900;
+  const base: Settings = { ...DEFAULT_SETTINGS, quality: mobile ? "medium" : "high" };
   try {
-    return { ...DEFAULT_SETTINGS, ...(JSON.parse(localStorage.getItem("lt:settings") ?? "{}") as Partial<Settings>) };
+    return { ...base, ...(JSON.parse(localStorage.getItem("lt:settings") ?? "{}") as Partial<Settings>) };
   } catch {
-    return DEFAULT_SETTINGS;
+    return base;
   }
 }
 export function storeSettings(s: Settings) {

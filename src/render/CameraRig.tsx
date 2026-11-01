@@ -31,8 +31,8 @@ export function CameraRig() {
     const cam = camera as THREE.PerspectiveCamera;
     const store = useGame.getState();
     // focus requests from UI
-    if (store.cameraFocus && store.cameraFocus.t > (cameraCtl as unknown as { lastFocus: number }).lastFocus) {
-      (cameraCtl as unknown as { lastFocus: number }).lastFocus = store.cameraFocus.t;
+    if (store.cameraFocus && store.cameraFocus.t > cameraCtl.lastFocus) {
+      cameraCtl.lastFocus = store.cameraFocus.t;
       cameraCtl.focus(store.cameraFocus.x, store.cameraFocus.z, store.cameraFocus.zoom);
     }
     // follow selected creature
@@ -66,16 +66,16 @@ export function CameraRig() {
       cameraCtl.target.y += (gy - cameraCtl.target.y) * Math.min(1, dt * 2);
       const fog = state.scene.fog as THREE.Fog | null;
       if (fog) {
-        fog.near = THREE.MathUtils.lerp(2, 60, ease);
-        fog.far = THREE.MathUtils.lerp(40, 260, ease);
+        fog.near = THREE.MathUtils.lerp(2, 110, ease);
+        fog.far = THREE.MathUtils.lerp(40, 420, ease);
       }
       if (p >= 1) cameraCtl.intro = null;
     } else {
       cameraCtl.update(dt, gy);
       const fog = state.scene.fog as THREE.Fog | null;
       if (fog) {
-        fog.near += (70 - fog.near) * Math.min(1, dt);
-        fog.far += (280 - fog.far) * Math.min(1, dt);
+        fog.near += (110 - fog.near) * Math.min(1, dt);
+        fog.far += (420 - fog.far) * Math.min(1, dt);
       }
     }
     cameraCtl.apply(cam, state.clock.elapsedTime);

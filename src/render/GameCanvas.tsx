@@ -2,7 +2,8 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useEffect, useRef } from "react";
-import { Sky, Clouds, IntroClouds } from "./Sky";
+import { Sky, Clouds, IntroClouds, CloudSea } from "./Sky";
+import { Post } from "./Post";
 import { Terrain } from "./Terrain";
 import { Vegetation } from "./Vegetation";
 import { Creatures } from "./Creatures";
@@ -44,7 +45,7 @@ function Setup() {
   const quality = useGame((s) => s.settings.quality);
   useEffect(() => {
     gl.toneMapping = THREE.ACESFilmicToneMapping;
-    gl.toneMappingExposure = 1.05;
+    gl.toneMappingExposure = 0.92;
     gl.shadowMap.enabled = quality !== "low";
     gl.shadowMap.type = THREE.PCFSoftShadowMap;
     gl.outputColorSpace = THREE.SRGBColorSpace;
@@ -69,6 +70,7 @@ export function GameCanvas() {
         <Ticker />
         <Sky />
         <Clouds />
+        <CloudSea />
         <IntroClouds />
         <Terrain />
         <Vegetation />
@@ -79,6 +81,7 @@ export function GameCanvas() {
         <Effects />
         <Interaction />
         <CameraRig />
+        <Post />
       </Canvas>
       <div ref={(el) => { labelLayer.container = el; }} className="pointer-events-none absolute inset-0 overflow-hidden" />
     </div>
