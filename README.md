@@ -41,7 +41,9 @@ Other scripts:
 
 **Economy**: wood, stone and food physically exist as trees, rocks, berry bushes and crops. Creatures walk (grid A* with path caching), chop, carry to a campfire/storage, haul loose items, deliver reserved materials to construction sites and build. Buildings: Campfire, Storage Hut, Lumber Camp, Farm, Small House, Workshop, Totem.
 
-**Powers**: Grab/Throw (flick to launch; lakes splash; the edge of the world returns them on a cloud), Spawn, Lightning (scares, hurts, burns trees into loose wood), Bless, Terraform (hold to raise, right-click/Lower to dig), plus unlockable Giant, Clone and Storm bought with Essence from discoveries and achievements.
+**Powers**: Grab/Throw (flick to launch; lakes splash; bowling chains with hit-stop and slow-mo; the edge of the world returns them on a cloud), Spawn, Lightning (scares, hurts, burns trees into loose wood), Bless, Terraform (hold to raise, right-click/Lower to dig), plus unlockable Giant, Clone and Storm bought with Essence from discoveries and achievements. All of them paint while held.
+
+**Autonomy**: villages run themselves. Stewards plan their own buildings when nothing is under construction, creatures pick demand-driven jobs, feed themselves, nap, chat, chase boars and fight raiders; the hand is for mischief and nudges, never for babysitting.
 
 **AI Overlords** use the same creature/task/economy systems (no free resources, no instant buildings) with a strategic layer: personality build orders, need-driven job priorities, real food-surplus population growth, trade offers, raids (the Hoarder lands a goblin raider on your coast – dunk it to foil the raid), and a memory of what you've done to them that shifts relations.
 
@@ -59,7 +61,9 @@ Other scripts:
 
 ## Controls
 
-Five tokens do everything: **Build**, **Friend**, **Zap**, **Sun**, **Hill** (plus a **More** pouch for Dig, Giant, Twin and Storm once unlocked). Dragging anything always picks it up; there is no grab mode.
+Five tokens do everything: **Build**, **Friend**, **Zap**, **Sun**, **Hill** (plus a **More** pouch for Dig, Giant, Twin and Storm once unlocked). Tokens are **paint tools**: press and hold on the world and the power keeps firing under your finger (Friend pours out creatures, Zap strikes repeatedly, Sun warms everyone you sweep over, Hill raises land as you drag). A single tap works too. With no token armed, dragging anything picks it up.
+
+**Simple mode**: for the first ten minutes of a fresh solo world the HUD shows only the tokens and the resource bar. The Book, Decrees and Omens appear once the village is running (or straight away in Creative Sandbox). The 60-second opening is three beats: pick someone up, throw them, pour out friends and zap something.
 
 | | Desktop | Touch |
 | --- | --- | --- |
@@ -67,7 +71,7 @@ Five tokens do everything: **Build**, **Friend**, **Zap**, **Sun**, **Hill** (pl
 | Zoom (toward the cursor) | wheel / `-` `+` | pinch |
 | Rotate | right-drag / `Q` `E` | two-finger twist |
 | Pick up & throw | drag a creature, tree or rock; flick to release | same |
-| Use a token | tap the token, then tap the ground or a creature | same |
+| Use a token | tap the token, then press/hold/drag on the world to paint it | same |
 | Fly home | Home button / `H` / double-tap empty ground | same |
 | Send selected creature | right-click ground | "Send somewhere" then tap |
 | Tokens | `1`–`4` Friend / Zap / Sun / Hill, `0` no tool | bar |

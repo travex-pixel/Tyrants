@@ -72,7 +72,7 @@ export default function Game() {
       cameraCtl.followId = null;
       const home = w.islands.find((i) => i.id === w.factions[next.myFaction]?.homeIslandId) ?? w.islands[0];
       cameraCtl.desired.set(home.spawnPoint.x, 1, home.spawnPoint.z);
-      cameraCtl.desiredDist = 52;
+      cameraCtl.desiredDist = 34;
       cameraCtl.desiredYaw = 0.6;
       cameraCtl.snap();
       st.setNet({ enabled: supabaseConfigured(), connected: next.role !== "solo", role: next.role === "solo" ? "none" : next.role, roomCode: next.roomCode, players: [], error: null });
@@ -148,7 +148,7 @@ export default function Game() {
     st.setIntro(0);
     cameraCtl.intro = { t: 0, duration: 6.5 };
     cameraCtl.dist = 150;
-    cameraCtl.desiredDist = 34;
+    cameraCtl.desiredDist = 28;
   };
 
   // ── Actions exposed to menu/hud ──
@@ -427,6 +427,7 @@ if (typeof window !== "undefined") {
       void isl;
       return { x: cf.x, z: cf.z, placed };
     },
+    cursor: () => useGame.getState().cursorWorld,
     ui: () => {
       const st = useGame.getState();
       const s = getSession();

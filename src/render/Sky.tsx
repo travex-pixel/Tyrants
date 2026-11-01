@@ -88,7 +88,7 @@ export function Sky() {
   });
 
   const shadows = quality !== "low";
-  const size = quality === "high" ? 2048 : 1024;
+  const size = quality === "high" ? 2048 : quality === "medium" ? 1024 : 512;
   return (
     <>
       <mesh frustumCulled={false} renderOrder={-10}>
@@ -112,7 +112,7 @@ export function Sky() {
         shadow-camera-bottom={-70}
         shadow-bias={-0.0004}
         shadow-normalBias={0.04}
-        shadow-radius={quality === "high" ? 6 : 3}
+        shadow-radius={quality === "high" ? 5 : 2}
       />
     </>
   );

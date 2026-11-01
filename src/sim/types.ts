@@ -257,6 +257,7 @@ export interface Task {
   x: number;
   z: number;
   assignedTo: number | null;
+  assignedAt?: number;
   priority: number;
   createdAt: number;
   attempts: number;

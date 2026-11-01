@@ -10,7 +10,7 @@ import { addXp } from "./progression";
 import { updateDirector } from "./director";
 import { updateDares } from "./dares";
 import { generateTasks } from "./tasks";
-import { thinkOverlord } from "./overlords";
+import { thinkOverlord, stewardThink } from "./overlords";
 import { applyCommand } from "./powers";
 import { pruneEffects, chronicle, effect } from "./chronicle";
 import { checkMilestones } from "./progression";
@@ -137,6 +137,7 @@ export class Engine {
       for (const fid in w.factions) {
         const f = w.factions[fid];
         if (f.isAI && w.time >= f.aiNextThink) thinkOverlord(w, f, rng);
+        else if (!f.isAI && w.tick % 50 === 0) stewardThink(w, f, rng);
       }
       // rebuild dirty nav grids (terraform)
       for (const isl of w.islands) {

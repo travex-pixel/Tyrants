@@ -177,6 +177,47 @@ export function thinkOverlord(w: World, f: Faction, rng: RNG) {
   }
 }
 
+/**
+ * The steward: human-run settlements plan their own buildings when the Overlord hasn't planned
+ * anything for a while, so the village keeps growing on its own. Toggle with faction.jobPriorities.build > 0.
+ */
+export function stewardThink(w: World, f: Faction, rng: RNG) {
+  if (f.isAI || f.id === "wild" || w.meta.mode === "challenge") return;
+  if (f.jobPriorities.build <= 0) return;
+  const lastPlan = (w.flags[`steward_${f.id}`] as number) ?? 0;
+  if (w.time - lastPlan < 75) return;
+  const all = buildingsOf(w, f.id);
+  if (all.some((b) => !b.complete)) return; // something is already being built
+  const pop = population(w, f.id);
+  if (pop < 3) return;
+  const complete = all.filter((b) => b.complete);
+  const counts: Partial<Record<BuildingType, number>> = {};
+  for (const b of complete) counts[b.type] = (counts[b.type] ?? 0) + 1;
+  let next: BuildingType | null = null;
+  if (f.stock.food < pop * 2 && (counts.farm ?? 0) < 3) next = "farm";
+  else if (pop > 6 + housingCapacity(w, f.id) && (counts.house ?? 0) < 6) next = "house";
+  else if ((counts.storage ?? 0) < 1 && f.stock.wood >= 10) next = "storage";
+  else if ((counts.lumber ?? 0) < 1 && f.stock.wood >= 8) next = "lumber";
+  else if ((counts.workshop ?? 0) < 1 && f.stock.wood >= 16 && f.stock.stone >= 10) next = "workshop";
+  else if ((counts.farm ?? 0) < 2) next = "farm";
+  else if ((counts.house ?? 0) < 6 && pop > housingCapacity(w, f.id) + 3) next = "house";
+  if (!next) return;
+  const def = BUILDINGS[next];
+  const afford = Object.entries(def.cost).every(([k, v]) => f.stock[k as ResourceType] >= (v ?? 0) * 0.6);
+  if (!afford) return;
+  const isl = islandById(w, f.homeIslandId);
+  const anchor = complete.find((b) => b.type === "campfire") ?? complete[0];
+  if (!anchor) return;
+  const spot = pickBuildSpot(w, f, isl, anchor.x, anchor.z, def.footprint, rng);
+  if (!spot) return;
+  const b = placeBuildingRaw(w, next, f.id, isl.id, spot.x, spot.z, rng, false);
+  if (!b) return;
+  w.flags[`steward_${f.id}`] = w.time;
+  const who = rng.pick(creaturesOf(w, f.id).filter((c) => c.species !== "boar"));
+  effect(w, "text", b.x, b.z, { text: `${def.name}!`, color: "#ffe08a", ttl: 2, y: 1.5 });
+  chronicle(w, `${who ? who.name : "The folk"} decided the village needs a ${def.name} and started one without asking.`, "build", 2, { faction: f.id, x: b.x, z: b.z, islandId: isl.id });
+}
+
 function chooseNextBuilding(w: World, f: Faction, complete: { type: BuildingType }[], pop: number): BuildingType | null {
   const P = PERSONA[f.persona!];
   const counts: Partial<Record<BuildingType, number>> = {};

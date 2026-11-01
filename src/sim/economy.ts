@@ -43,7 +43,10 @@ export function updateItemRegrowth(w: World, dt: number) {
           o.burning = 6;
           w.flags.fireSpread = ((w.flags.fireSpread as number) ?? 0) + 1;
           addMayhem(w, 1, o.x, o.z);
-          for (const c of creaturesNear(w, o.x, o.z, 5, o.islandId)) remember(c, "threat", 0.8, undefined, o.x, o.z, w.time);
+          for (const c of creaturesNear(w, o.x, o.z, 5, o.islandId)) {
+            remember(c, "threat", 0.8, undefined, o.x, o.z, w.time);
+            if (rng.chance(0.3)) effect(w, "text", c.x, c.z, { text: "FIRE!", color: "#ffb347", ttl: 1.2, y: 1.5 });
+          }
           const isl = islandById(w, o.islandId);
           if (isl.ownerFaction && w.factions[isl.ownerFaction]?.persona === "wildkeeper" && rng.chance(0.3)) noteAIEvent(w, isl.ownerFaction, "wildfire", -5, "A wildfire tore through my groves.");
           break;

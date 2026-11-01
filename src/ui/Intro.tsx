@@ -17,11 +17,9 @@ const LINES: Record<number, { big: string; small?: string }> = {
   1: { big: "Look. They're alive, and they have opinions." },
   2: { big: "Pick someone up.", small: "Drag a creature with your finger or mouse" },
   3: { big: "Now throw them. Into the lake if you can!", small: "Flick and let go" },
-  4: { big: "Make a friend.", small: "Tap FRIEND, then tap the ground" },
-  5: { big: "Shine the Sun on them.", small: "Tap SUN, then tap the group" },
-  6: { big: "Build them a Farm.", small: "Tap BUILD, pick the Farm, tap the ground" },
-  7: { big: "They'll build it themselves. Watch them carry.", small: "Everything they do, they remember" },
-  8: { big: "Your neighbours are getting stronger." },
+  4: { big: "Pour out some friends.", small: "Hold FRIEND down and drag across the ground" },
+  5: { big: "Now zap something.", small: "Hold ZAP and drag. Trees burn. Folk fly." },
+  6: { big: "That's it. The rest is yours to discover.", small: "The village builds itself; you make the weather" },
 };
 
 export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
@@ -31,7 +29,7 @@ export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
   useGame((s) => s.uiTick);
   const timer = useRef<number | null>(null);
   const [visibleLine, setVisibleLine] = useState(true);
-  const baseline = useRef<{ spawns: number; blessed: number; buildings: number; thrown: number } | null>(null);
+  const baseline = useRef<{ spawns: number; blessed: number; buildings: number; thrown: number; struck: number } | null>(null);
 
   // stage timers and pointer targets
   useEffect(() => {
@@ -43,7 +41,7 @@ export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
     const t = window.setTimeout(() => setVisibleLine(true), 50);
     if (timer.current) window.clearTimeout(timer.current);
     const w = getWorld();
-    if (w && !baseline.current) baseline.current = { spawns: (w.flags.playerSpawns as number) ?? 0, blessed: w.stats.blessed, buildings: Object.values(w.buildings).filter((b) => b.faction === w.playerFaction).length, thrown: w.stats.thrown };
+    if (w && !baseline.current) baseline.current = { spawns: (w.flags.playerSpawns as number) ?? 0, blessed: w.stats.blessed, buildings: Object.values(w.buildings).filter((b) => b.faction === w.playerFaction).length, thrown: w.stats.thrown, struck: w.stats.struck };
     if (stage === 0) {
       timer.current = window.setTimeout(() => {
         if (w) {
@@ -76,25 +74,22 @@ export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
       useGame.getState().setSpawnSpecies("goblin");
       if (w) {
         const cf = Object.values(w.buildings).find((b) => b.faction === w.playerFaction && b.type === "campfire");
-        if (cf) setPointer({ x: cf.x + 2.5, z: cf.z + 1.5 });
+        if (cf) setPointer({ x: cf.x + 3, z: cf.z + 2 });
       }
     } else if (stage === 5) {
-      useGame.getState().setPower("bless");
+      useGame.getState().setPower("lightning");
       if (w) {
-        const cf = Object.values(w.buildings).find((b) => b.faction === w.playerFaction && b.type === "campfire");
-        if (cf) setPointer({ x: cf.x, z: cf.z });
+        const tree = Object.values(w.nodes).find((n) => n.islandId === 1 && n.kind === "tree" && Math.hypot(n.x - cameraCtl.target.x, n.z - cameraCtl.target.z) < 12);
+        if (tree) setPointer({ x: tree.x, z: tree.z });
+        else setPointer(null);
       }
     } else if (stage === 6) {
       useGame.getState().setPower("grab");
-      useGame.getState().setPanel("build");
-      setPointer(null);
-    } else if (stage === 7) {
-      useGame.getState().setPanel("none");
       setPointer(null);
       timer.current = window.setTimeout(() => {
-        cameraCtl.zoom(1.6);
-        setIntro(8);
-      }, 3200);
+        cameraCtl.zoom(1.25);
+        skip();
+      }, 3600);
     }
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,12 +107,11 @@ export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
         audio.giggle();
         setIntro(4);
       }
-    } else if (stage === 4 && ((w.flags.playerSpawns as number) ?? 0) > b.spawns) {
+    } else if (stage === 4 && ((w.flags.playerSpawns as number) ?? 0) >= b.spawns + 4) {
+      audio.giggle();
       setIntro(5);
-    } else if (stage === 5 && w.stats.blessed > b.blessed) {
+    } else if (stage === 5 && w.stats.struck >= b.struck + 3) {
       setIntro(6);
-    } else if (stage === 6 && Object.values(w.buildings).filter((x) => x.faction === w.playerFaction).length > b.buildings) {
-      setIntro(7);
     }
   });
 
@@ -131,11 +125,11 @@ export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
     useGame.getState().setPower("grab");
     onFinish();
   };
-  const line = LINES[stage] ?? LINES[8];
-  const top = stage >= 2 && stage <= 7;
+  const line = LINES[stage] ?? LINES[6];
+  const top = stage >= 2 && stage <= 6;
   return (
     <div className="absolute inset-0 z-30 pointer-events-none">
-      {stage < 8 && (
+      {stage < 6 && (
         <div className="absolute top-4 right-4 pointer-events-auto">
           <button className="btn btn-sm" onClick={skip}>
             Skip intro
@@ -148,19 +142,6 @@ export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
         </div>
         {line.small && <div className="mt-2 text-sm font-bold text-[#fff1d0] drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">{line.small}</div>}
       </div>
-      {stage === 8 && (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-[16%] flex flex-col sm:flex-row gap-3 pointer-events-auto pop">
-          <button className="btn btn-primary" onClick={() => { skip(); useGame.getState().setPanel("build"); }}>
-            <Icons.mallet style={{ width: 18, height: 18 }} /> Keep building
-          </button>
-          <button className="btn" onClick={() => { skip(); const w = getWorld(); if (w && w.islands[1]) useGame.getState().focusCamera(w.islands[1].center.x, w.islands[1].center.z, 48); useGame.getState().toast("Tap a rival island to size them up. Their Book tab lets you trade or raid.", "info"); }}>
-            <Icons.eye style={{ width: 18, height: 18 }} /> Meet the neighbours
-          </button>
-          <button className="btn" onClick={() => { skip(); useGame.getState().setBookTab("players"); }}>
-            <Icons.users style={{ width: 18, height: 18 }} /> Play with friends
-          </button>
-        </div>
-      )}
     </div>
   );
 }

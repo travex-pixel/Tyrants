@@ -648,6 +648,27 @@ export function updateCreature(w: World, c: Creature, dt: number, rng: RNG) {
     return;
   }
 
+  // ── Defence: brave or loyal folk tackle enemy raiders in their village ──
+  if (c.faction !== "wild" && c.state !== "fight" && c.state !== "flee" && (c.traits.includes("brave") || c.traits.includes("loyal")) && c.decisionCooldown <= 0) {
+    const raider = creaturesNear(w, c.x, c.z, 3, c.islandId).find((o) => o.state === "raid" && o.faction !== c.faction && o.raidTarget?.factionId === c.faction);
+    if (raider) {
+      interrupt(w, c, rng, false);
+      c.partnerId = raider.id;
+      setState(c, "fight");
+      raider.health -= 20;
+      effect(w, "anger", raider.x, raider.z, { ttl: 1, y: 1.2 });
+      effect(w, "text", c.x, c.z, { text: rng.pick(["GET 'EM!", "not today!", "thief!"]), color: "#ffd166", ttl: 1.3, y: 1.5 });
+      if (raider.health < 30 && raider.raidTarget) {
+        raider.raidTarget.phase = "return";
+        raider.path = null;
+        if (raider.carrying) {
+          const it = dropCarried(w, raider, rng, 1);
+          if (it) chronicle(w, `${c.name} tackled ${raider.name} and knocked the loot loose!`, "rival", 3, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
+        } else chronicle(w, `${c.name} chased ${raider.name} off.`, "rival", 2, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
+        unlockAchievement(w, "raid_foiled");
+      }
+    }
+  }
   // ── Fear: flee from recent threats ──
   if (c.state !== "flee") {
     const threat = c.memory.find((m) => m.kind === "threat" && w.time - m.t < 1.5 && m.x !== undefined);
@@ -776,7 +797,7 @@ export function updateCreature(w: World, c: Creature, dt: number, rng: RNG) {
       // work
       const mul = (sp.gatherMul[n.resource] ?? 1) * skillEfficiency(n.resource === "wood" ? c.skills.woodcutting : c.skills.gathering) * workMul(w, c);
       const lumberBonus = n.resource === "wood" && nearestBuilding(w, n.x, n.z, 10, (b) => b.type === "lumber" && b.complete && b.faction === c.faction) ? 1.35 : 1;
-      const need = 3.4 / (mul * lumberBonus);
+      const need = 2.4 / (mul * lumberBonus);
       if (c.stateTime >= need) {
         finishGather(w, c, n, rng);
         removeTask(w, t.id, false);
@@ -787,6 +808,15 @@ export function updateCreature(w: World, c: Creature, dt: number, rng: RNG) {
       break;
     }
     case "carry": {
+      if (c.stateTime > 40) {
+        // watchdog: stuck courier drops the load where it stands and goes idle
+        const it = dropCarried(w, c, rng);
+        if (t) removeTask(w, t.id, false);
+        c.taskId = null;
+        setState(c, "idle");
+        if (it) effect(w, "dust", c.x, c.z, { ttl: 0.6 });
+        break;
+      }
       if (moveAlong(w, c, dt, rng)) {
         if (t && t.kind === "haulItem") {
           const it = t.itemId !== undefined ? w.items[t.itemId] : undefined;
@@ -1001,6 +1031,8 @@ function socialOutcome(w: World, a: Creature, b: Creature, rng: RNG) {
     relation(a, b.id, -5);
     remember(b, "stolen_from", 1, a.id, undefined, undefined, w.time);
     effect(w, "anger", b.x, b.z, { ttl: 1.2, y: 1 });
+    effect(w, "text", b.x, b.z, { text: "MY FOOD!", color: "#ffb3a0", ttl: 1.4, y: 1.5 });
+    effect(w, "text", a.x, a.z, { text: "hehe", color: "#fff", ttl: 1.2, y: 1.5 });
     chronicle(w, `${a.name} stole ${amt} food from ${b.name}. ${b.name} will remember this.`, "social", 2, { faction: a.faction, x: a.x, z: a.z, islandId: a.islandId });
     const f = w.factions[a.faction];
     if (f) f.stats.stolen += amt;
@@ -1013,6 +1045,7 @@ function socialOutcome(w: World, a: Creature, b: Creature, rng: RNG) {
     relation(a, b.id, 4);
     remember(b, "pranked", 0.6, a.id, undefined, undefined, w.time);
     effect(w, "anger", b.x, b.z, { ttl: 1, y: 1 });
+    effect(w, "text", b.x, b.z, { text: "HEY!", color: "#ffb3a0", ttl: 1.2, y: 1.5 });
     if (b.carrying && rng.chance(0.5)) {
       dropCarried(w, b, rng);
       chronicle(w, `${a.name} tripped ${b.name}, who dropped everything.`, "social", 1, { faction: a.faction, x: a.x, z: a.z, islandId: a.islandId });
@@ -1033,6 +1066,7 @@ function socialOutcome(w: World, a: Creature, b: Creature, rng: RNG) {
   relation(a, b.id, d);
   relation(b, a.id, d);
   effect(w, "heart", (a.x + b.x) / 2, (a.z + b.z) / 2, { ttl: 1.2, y: 1 });
+  if (rng.chance(0.3)) effect(w, "text", a.x, a.z, { text: rng.pick(["nice hat", "lovely weather", "did you hear?", "shh…", "haha!"]), color: "#fff", ttl: 1.3, y: 1.5 });
   const nr = a.relationships[b.id];
   if (nr >= 70 && rel < 70) {
     chronicle(w, `${a.name} and ${b.name} are now best mates.`, "social", 2, { faction: a.faction, x: a.x, z: a.z, islandId: a.islandId });
@@ -1069,6 +1103,7 @@ export function completeBuilding(w: World, b: Building, by: Creature | null, rng
   chronicle(w, `${f ? f.name : "Someone"} completed a ${BUILDINGS[b.type].name}.${who}`, "build", imp, { faction: b.faction, x: b.x, z: b.z, islandId: b.islandId });
   // nearby creatures celebrate
   for (const c of creaturesNear(w, b.x, b.z, 7, b.islandId)) {
+    if (c.faction === b.faction && rng.chance(0.4)) effect(w, "text", c.x, c.z, { text: rng.pick(["woo!", "we did it!", "finally", "hooray"]), color: "#fff", ttl: 1.3, y: 1.5 });
     if (c.faction !== b.faction || c.state === "held" || c.state === "thrown") continue;
     if (c.state === "idle" || c.state === "wander" || c.state === "build") {
       interrupt(w, c, rng, false);
@@ -1120,6 +1155,7 @@ function updateThrown(w: World, c: Creature, dt: number, rng: RNG) {
     c.vy = 0;
     delete w.flags[`slomo_${c.id}`];
     const speed = Math.hypot(c.vx, c.vz);
+    const launchDir = { x: c.vx, z: c.vz };
     c.vx = 0;
     c.vz = 0;
     if (water) {
@@ -1127,6 +1163,21 @@ function updateThrown(w: World, c: Creature, dt: number, rng: RNG) {
       effect(w, "text", c.x, c.z, { text: "SPLASH!", color: "#bfe6ff", ttl: 1.4, y: 1.2 });
       w.flags[`dunks_${c.id}`] = ((w.flags[`dunks_${c.id}`] as number) ?? 0) + 1;
       w.flags.lastDunkAt = w.time;
+      delete w.flags[`bounced_${c.id}`];
+      // the wave knocks anyone standing at the shore off their feet
+      for (const o of creaturesNear(w, c.x, c.z, 2.2, c.islandId)) {
+        if (o.id === c.id || o.state === "held" || o.state === "thrown" || o.state === "aboard" || o.state === "swim") continue;
+        interrupt(w, o, rng, true);
+        const dx = o.x - c.x;
+        const dz = o.z - c.z;
+        const d = Math.hypot(dx, dz) || 0.3;
+        o.vx = (dx / d) * 4;
+        o.vz = (dz / d) * 4;
+        o.vy = 4;
+        o.y += 0.05;
+        setState(o, "thrown");
+        effect(w, "text", o.x, o.z, { text: "wet!", color: "#bfe6ff", ttl: 1, y: 1.3 });
+      }
       if (c.raidTarget && c.carrying) {
         dropCarried(w, c, rng, 1.5);
         chronicle(w, `${c.name}'s raid ended in the lake. The loot floated back to shore.`, "rival", 3, { x: c.x, z: c.z, islandId: c.islandId });
@@ -1140,7 +1191,17 @@ function updateThrown(w: World, c: Creature, dt: number, rng: RNG) {
       if (rng.chance(0.4)) chronicle(w, `${c.name} went for an involuntary swim.`, "power", 1, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
     } else {
       effect(w, "dust", c.x, c.z, { ttl: 0.8, size: 1 });
-      if (speed > 5) effect(w, "text", c.x, c.z, { text: speed > 11 ? "OOF!" : "oof", color: "#ffd9c0", ttl: 1.2, y: 1.2 });
+      if (speed > 5) effect(w, "text", c.x, c.z, { text: speed > 11 ? "OOF!" : rng.chance(0.5) ? "ow." : "my knees!", color: "#ffd9c0", ttl: 1.2, y: 1.2 });
+      // a hard landing bounces once
+      if (speed > 7 && !w.flags[`bounced_${c.id}`]) {
+        w.flags[`bounced_${c.id}`] = 1;
+        c.vx = launchDir.x * 0.35;
+        c.vz = launchDir.z * 0.35;
+        c.vy = 3.5;
+        c.y += 0.05;
+        return; // still airborne
+      }
+      delete w.flags[`bounced_${c.id}`];
       // land on a walkable cell
       if (!isWalkable(isl, c.x, c.z)) {
         const cell = nearestWalkableCell(isl, c.x, c.z, 6);
@@ -1150,7 +1211,6 @@ function updateThrown(w: World, c: Creature, dt: number, rng: RNG) {
         }
       }
       // bowling: whoever we land on is launched too (and may hit the next one)
-      const launchDir = { x: c.vx, z: c.vz };
       let strikes = 0;
       for (const o of creaturesNear(w, c.x, c.z, 1.1 * Math.max(1, c.scale), c.islandId)) {
         if (o.id === c.id || o.state === "held" || o.state === "thrown" || o.state === "aboard") continue;
@@ -1221,6 +1281,7 @@ function fellOff(w: World, c: Creature, rng: RNG) {
   effect(w, "fall", c.x, c.z, { ttl: 2 });
   setState(c, "recover");
   remember(c, "thrown", 1, undefined, undefined, undefined, w.time);
+  effect(w, "text", c.x, c.z, { text: "...what happened?", color: "#fff", ttl: 2, y: 1.5 });
   chronicle(w, `${c.name} was thrown off the edge of the world and returned, confused, on a passing cloud.`, "power", 2, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
 }
 

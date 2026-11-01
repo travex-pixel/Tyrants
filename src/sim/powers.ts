@@ -38,7 +38,7 @@ export function applyCommand(w: World, cmd: Command, rng: RNG): CommandResult {
       if (isWaterAt(isl, cmd.x, cmd.z)) return { ok: false, reason: "Can't spawn in water" };
       let pop = 0;
       for (const id in w.creatures) pop++;
-      if (pop >= 160) return { ok: false, reason: "The world is full (160 creatures)" };
+      if (pop >= 90) return { ok: false, reason: "The island is full (90 creatures)" };
       const faction = cmd.faction ?? factionOfPlayer(w, cmd.player);
       const c = spawnCreature(w, cmd.species, faction, isl.id, cmd.x, cmd.z, rng);
       c.y = Math.max(heightAt(isl, c.x, c.z), isl.waterLevel) + 2.5;
@@ -111,7 +111,7 @@ export function applyCommand(w: World, cmd: Command, rng: RNG): CommandResult {
       w.flags.yeetStreak = streak;
       w.flags.lastThrowAt = w.time;
       addXp(w, 2 + Math.min(10, streak), "throw");
-      effect(w, "text", c.x, c.z, { text: streak >= 3 ? `×${streak} YEET!` : sp > 10 ? "YEET!" : "yeet", color: streak >= 3 ? "#ff8fab" : "#ffffff", ttl: 1.3, y: 1.8 });
+      effect(w, "text", c.x, c.z, { text: streak >= 3 ? `×${streak} YEET!` : c.traits.includes("brave") ? "WHEEE!" : rng.pick(["NOOO!", "not again!", "put me DOWN", "aaaaa"]), color: streak >= 3 ? "#ff8fab" : "#ffffff", ttl: 1.3, y: 1.8 });
       if (streak === 5) chronicle(w, `${playerName(w, cmd.player)} threw five creatures in quick succession. The survivors are forming a committee.`, "power", 2, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
       const f = w.factions[c.faction];
       if (f) f.stats.thrown++;
@@ -209,6 +209,7 @@ export function applyCommand(w: World, cmd: Command, rng: RNG): CommandResult {
         remember(c, "blessed", 1, undefined, undefined, undefined, w.time);
         c.devout = (c.devout ?? 0) + 1;
         c.jumpy = Math.max(0, (c.jumpy ?? 0) - 1);
+        if (rng.chance(0.5)) effect(w, "text", c.x, c.z, { text: rng.pick(["ahh ☀", "warm!", "thank you", "lovely"]), color: "#ffe08a", ttl: 1.3, y: 1.5 });
         if (c.devout === 3) chronicle(w, `${c.name} has been blessed three times and now follows the hand around like a devoted puppy.`, "story", 2, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
         const f = w.factions[c.faction];
         if (f) {

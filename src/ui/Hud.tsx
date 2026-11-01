@@ -92,9 +92,15 @@ export function Hud({ actions }: { actions: HudActions }) {
   const unread = w.chronicle.filter((e) => e.id > lastSeen && e.importance >= 2).length;
   const night = isNight(w);
   const hideForIntro = intro >= 0 && intro < 4;
-  const teaching = intro >= 4 && intro <= 7;
-  const tokenVisible = (id: string) => !teaching || (intro === 4 ? id === "spawn" : intro === 5 ? id === "spawn" || id === "bless" : id === "build" || id === "spawn" || id === "bless");
-  const teachToken = intro === 4 ? "spawn" : intro === 5 ? "bless" : intro === 6 && !buildType ? "build" : null;
+  const teaching = intro >= 4 && intro <= 6;
+  const tokenVisible = (id: string) => !teaching || (intro === 4 ? id === "spawn" : id === "spawn" || id === "lightning");
+  const teachToken = intro === 4 ? "spawn" : intro === 5 ? "lightning" : null;
+  // simple mode: the first ten minutes of a world show only the tokens and three numbers
+  const simple = w.time < 600 && !w.flags.uiUnlocked && w.meta.mode !== "sandbox";
+  if (!simple && !w.flags.uiUnlocked && w.meta.mode !== "sandbox") {
+    w.flags.uiUnlocked = 1;
+    useGame.getState().toast("The Book has opened: story, rivals, friends and awards live there now.", "good");
+  }
   const buildOpen = panel === "build";
   const digging = (cooldowns.terraLower ?? 0) > performance.now();
   const mayhem = (w.flags.mayhem as number) ?? 0;
@@ -148,7 +154,7 @@ export function Hud({ actions }: { actions: HudActions }) {
             <Chip icon="food" value={Math.floor(f.stock.food)} label="food" title="Food: berries and crops" color="#a93a2a" />
             <Chip icon="pop" value={pop} label="folk" title="Population" />
             <span className="w-px h-5 bg-[rgba(60,30,10,0.4)] mx-1" />
-            <button className="btn btn-sm" style={{ padding: "5px 9px" }} title="Fly home (H)" onClick={() => { const home = w.islands.find((i) => i.id === f.homeIslandId) ?? w.islands[0]; const cf = Object.values(w.buildings).find((b) => b.faction === f.id && b.type === "campfire"); useGame.getState().focusCamera(cf ? cf.x : home.spawnPoint.x, cf ? cf.z : home.spawnPoint.z, 52); audio.whooshCamera(); }}>
+            <button className="btn btn-sm" style={{ padding: "5px 9px" }} title="Fly home (H)" onClick={() => { const home = w.islands.find((i) => i.id === f.homeIslandId) ?? w.islands[0]; const cf = Object.values(w.buildings).find((b) => b.faction === f.id && b.type === "campfire"); useGame.getState().focusCamera(cf ? cf.x : home.spawnPoint.x, cf ? cf.z : home.spawnPoint.z, 34); audio.whooshCamera(); }}>
               <Icons.home style={{ width: 16, height: 16 }} /> <span className="hidden sm:inline">Home</span>
             </button>
             {s.engine && (
@@ -161,17 +167,22 @@ export function Hud({ actions }: { actions: HudActions }) {
             <div className="plaque hidden md:inline-block fade-up" title={w.meta.name}>{w.meta.name}</div>
             {mayhem >= 2 && <div className="chip pulse" style={{ background: "linear-gradient(180deg,#ffd166,#e9a93c)", color: "#3b2508", border: "1px solid #7a4d14" }}>Mayhem {Math.floor(mayhem)}</div>}
           </div>
-          {!teaching && <button className="bar-wood row p-1.5 fade-up relative" style={{ gap: 6, padding: "6px 12px" }} title="The Book: story, rivals, friends, awards, settings" onClick={() => { audio.click(); setPanel(BOOK_TABS.some((t) => t.id === panel) ? "none" : bookTab); }}>
+          {!teaching && !simple && <button className="bar-wood row p-1.5 fade-up relative" style={{ gap: 6, padding: "6px 12px" }} title="The Book: story, rivals, friends, awards, settings" onClick={() => { audio.click(); setPanel(BOOK_TABS.some((t) => t.id === panel) ? "none" : bookTab); }}>
             <Icons.book2 style={{ width: 26, height: 26, color: "#f6e8cf" }} />
             <span className="icon-label" style={{ color: "#f6e8cf", fontSize: 11 }}>Book</span>
             {!!unread && <span className="badge">{unread > 9 ? "9+" : unread}</span>}
             {net.connected && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--good)]" />}
           </button>}
+          {!teaching && simple && (
+            <button className="bar-wood row fade-up" style={{ padding: "8px 12px" }} title="Menu" onClick={() => { audio.click(); setPanel("pause"); }}>
+              <Icons.cog style={{ width: 22, height: 22, color: "#f6e8cf" }} />
+            </button>
+          )}
         </div>
       )}
 
-      {!hideForIntro && !teaching && panel === "none" && <DecreesPanel />}
-      {!hideForIntro && !teaching && <OmenCard />}
+      {!hideForIntro && !teaching && !simple && panel === "none" && <DecreesPanel />}
+      {!hideForIntro && !teaching && !simple && <OmenCard />}
       <AscendModal />
 
       {/* Toasts */}

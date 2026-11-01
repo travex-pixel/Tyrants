@@ -63,7 +63,7 @@ function Setup() {
     gl.toneMapping = THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = 0.92;
     gl.shadowMap.enabled = quality !== "low";
-    gl.shadowMap.type = THREE.PCFSoftShadowMap;
+    gl.shadowMap.type = quality === "high" ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
     gl.outputColorSpace = THREE.SRGBColorSpace;
     scene.background = null;
   }, [gl, scene, quality]);
@@ -76,7 +76,7 @@ export function GameCanvas() {
     <div className="absolute inset-0">
       <Canvas
         shadows={quality !== "low"}
-        dpr={quality === "high" ? [1, 1.75] : quality === "medium" ? [1, 1.25] : 1}
+        dpr={quality === "high" ? [1, 1.5] : quality === "medium" ? [1, 1.25] : 1}
         camera={{ fov: 50, near: 0.5, far: 1200, position: [60, 60, 60] }}
         gl={{ antialias: quality !== "low", powerPreference: "high-performance", stencil: false }}
         frameloop="always"

@@ -10,7 +10,7 @@ import { chronicle } from "./chronicle";
 
 export const SIM_DT = 0.1; // 10 Hz fixed step
 export const WORLD_VERSION = 3;
-export const DAY_LENGTH = 360; // seconds per in-game day
+export const DAY_LENGTH = 300; // seconds per in-game day
 
 export const ACHIEVEMENTS: Omit<Achievement, "unlockedAt">[] = [
   { id: "first_spawn", title: "Let There Be Goblins", text: "Spawn your first creature.", essence: 2 },
@@ -71,7 +71,7 @@ export const FACTION_COLORS = ["#f2b84b", "#5fb3f0", "#f06b8b", "#8de06a"];
 export function makeFaction(id: string, name: string, color: string, isAI: boolean, homeIslandId: number, difficulty: Faction["difficulty"] = "normal", persona?: OverlordPersona): Faction {
   return {
     id, name, color, isAI, persona, homeIslandId,
-    stock: { wood: isAI ? 14 : 20, stone: isAI ? 6 : 6, food: isAI ? 16 : 24 },
+    stock: { wood: isAI ? 14 : 30, stone: isAI ? 6 : 10, food: isAI ? 16 : 40 },
     essence: 0,
     jobPriorities: { gather: 1, build: 1, farm: 1, haul: 1, explore: 0.6 },
     relations: {},
@@ -172,11 +172,11 @@ export function createWorld(o: CreateWorldOptions): World {
   }
 
   // Starter creatures for the player
-  const starters = o.starterCreatures ?? (o.mode === "sandbox" ? 8 : 7);
-  const starterMix: SpeciesId[] = ["goblin", "goblin", "trollkin", "mushroom", "goblin", "mushroom", "trollkin", "goblin"];
+  const starters = o.starterCreatures ?? (o.mode === "sandbox" ? 18 : 14);
+  const starterMix: SpeciesId[] = ["goblin", "goblin", "trollkin", "mushroom", "goblin", "mushroom", "trollkin", "goblin", "goblin", "mushroom", "trollkin", "goblin", "goblin", "mushroom"];
   for (let i = 0; i < starters; i++) {
-    const sp = findFlatSpot(main, main.spawnPoint.x, main.spawnPoint.z, 0, rng, 30, 1.5) ?? main.spawnPoint;
-    spawnCreature(w, starterMix[i % starterMix.length], "p1", 1, sp.x + rng.range(-1.2, 1.2), sp.z + rng.range(-1.2, 1.2), rng);
+    const sp = findFlatSpot(main, main.spawnPoint.x, main.spawnPoint.z, 0, rng, 30, 2) ?? main.spawnPoint;
+    spawnCreature(w, starterMix[i % starterMix.length], "p1", 1, sp.x + rng.range(-2, 2), sp.z + rng.range(-2, 2), rng);
   }
   // Player starts with a campfire so creatures have somewhere to eat and drop resources.
   placeBuildingRaw(w, "campfire", "p1", 1, main.spawnPoint.x, main.spawnPoint.z, rng, true);

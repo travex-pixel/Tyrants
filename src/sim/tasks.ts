@@ -90,6 +90,28 @@ export function generateTasks(w: World) {
       if (w.time - t.createdAt > 240 && t.assignedTo === null) stale = true;
     }
     if (t.assignedTo !== null && !w.creatures[t.assignedTo]) t.assignedTo = null;
+    // consistency guard: a task whose "owner" is doing something else is released
+    if (t.assignedTo !== null && w.creatures[t.assignedTo].taskId !== t.id) {
+      if (t.nodeId !== undefined && w.nodes[t.nodeId]?.reservedBy === t.assignedTo) w.nodes[t.nodeId].reservedBy = null;
+      if (t.itemId !== undefined && w.items[t.itemId]?.reservedBy === t.assignedTo) w.items[t.itemId].reservedBy = null;
+      t.assignedTo = null;
+    }
+    // watchdog: a task held for over a minute is released so someone else can take it
+    if (t.assignedTo !== null && t.assignedAt !== undefined && w.time - t.assignedAt > 60) {
+      const c = w.creatures[t.assignedTo];
+      if (c && c.state !== "carry") unassignTask(w, c, true);
+      else if (c && c.carrying && t.kind === "deliverMaterial") {
+        // the carrier has the material: deliver it on the spot into the stockpile so nothing is lost
+        const f = w.factions[c.faction];
+        if (f) f.stock[c.carrying.type] += c.carrying.amount;
+        c.carrying = null;
+        removeTask(w, t.id, false);
+        c.taskId = null;
+        c.state = "idle";
+        c.decisionCooldown = 0.5;
+        continue;
+      }
+    }
     if (stale) removeTask(w, t.id, !t.assignedTo);
   }
 
@@ -244,10 +266,10 @@ export function resourceDemand(w: World, f: Faction, islandId: number, pop: numb
   }
   const lumber = buildingsOf(w, f.id, "lumber").filter((b) => b.complete && b.islandId === islandId).length;
   // keep roughly half the settlement visibly working even with nothing planned
-  const floor = f.stock.wood < 60 + pending.wood ? Math.ceil(pop / 2) : 1;
+  const floor = f.stock.wood < 80 + pending.wood ? Math.max(2, Math.ceil(pop * 0.6)) : 2;
   d.wood = Math.min(pop, Math.max(floor, 1 + lumber * 3 + (f.stock.wood < 40 + pending.wood ? 1 : 0) + (pending.wood > f.stock.wood ? 1 : 0)));
-  d.stone = f.stock.stone < 16 + pending.stone ? 1 + (pending.stone > f.stock.stone ? 1 : 0) : 0;
-  d.food = f.stock.food < pop * 3 ? 1 + (f.stock.food < pop ? 1 : 0) : 0;
+  d.stone = f.stock.stone < 20 + pending.stone ? 1 + (pending.stone > f.stock.stone ? 1 : 0) + (pop > 10 ? 1 : 0) : 0;
+  d.food = f.stock.food < pop * 3 ? 1 + (f.stock.food < pop ? 2 : 0) + (pop > 10 ? 1 : 0) : 0;
   // Priorities from the overlord scale demand
   d.wood = Math.round(d.wood * f.jobPriorities.gather);
   d.stone = Math.round(d.stone * f.jobPriorities.gather);
@@ -291,7 +313,9 @@ export function pickTask(w: World, c: Creature): Task | null {
 }
 
 export function assignTask(w: World, c: Creature, t: Task) {
+  if (c.taskId !== null && c.taskId !== t.id) unassignTask(w, c, false);
   t.assignedTo = c.id;
+  t.assignedAt = w.time;
   c.taskId = t.id;
   if (t.nodeId !== undefined) {
     const n = w.nodes[t.nodeId];

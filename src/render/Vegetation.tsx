@@ -41,7 +41,7 @@ function signature(w: ReturnType<typeof getWorld>): string {
   let n = 0;
   for (const id in w.nodes) {
     const nd = w.nodes[id];
-    s += nd.id * 7 + (nd.kind === "tree" ? 3 : nd.kind === "stump" ? 5 : 1) * 1000 + Math.ceil(nd.amount) + (nd.burning ? 50000 : 0);
+    s += nd.id * 7 + (nd.kind === "tree" ? 3 : nd.kind === "stump" ? 5 : 1) * 1000 + Math.floor(nd.amount / 3) + (nd.burning ? 50000 : 0);
     n++;
   }
   return `${n}:${s}:${w.islands.map((i) => i.navVersion).join(",")}`;

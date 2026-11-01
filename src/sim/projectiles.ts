@@ -76,7 +76,35 @@ export function updateProjectiles(w: World, dt: number, rng: RNG) {
 function land(w: World, p: Projectile, isl: World["islands"][number], water: boolean, rng: RNG) {
   const speed = Math.hypot(p.vx, p.vz, p.vy);
   delete w.projectiles[p.id];
-  if (water) effect(w, "splash", p.x, p.z, { ttl: 1.6, size: 1.6 });
+  // timber chain: a falling tree knocks the next tree over
+  const next = Object.values(w.nodes).find((n) => n.islandId === isl.id && n.kind === "tree" && n.amount > 0 && (n.x - p.x) ** 2 + (n.z - p.z) ** 2 < 1.6 * 1.6);
+  if (next && speed > 4 && Object.keys(w.projectiles).length < 12) {
+    const q = grabNode(w, next, rng);
+    if (q) {
+      q.held = false;
+      const d = Math.hypot(p.vx, p.vz) || 1;
+      q.vx = (p.vx / d) * 5;
+      q.vz = (p.vz / d) * 5;
+      q.vy = 4;
+      effect(w, "text", q.x, q.z, { text: "TIMBER!", color: "#ffe08a", ttl: 1.4, y: 1.8 });
+    }
+  }
+  if (water) {
+    effect(w, "splash", p.x, p.z, { ttl: 1.6, size: 1.6 });
+    for (const o of creaturesNear(w, p.x, p.z, 2.6, isl.id)) {
+      if (o.state === "held" || o.state === "thrown" || o.state === "aboard") continue;
+      interrupt(w, o, rng, true);
+      const dx = o.x - p.x;
+      const dz = o.z - p.z;
+      const d = Math.hypot(dx, dz) || 0.3;
+      o.vx = (dx / d) * 4.5;
+      o.vz = (dz / d) * 4.5;
+      o.vy = 4.5;
+      o.y += 0.05;
+      o.state = "thrown";
+      o.stateTime = 0;
+    }
+  }
   else {
     effect(w, "crash", p.x, p.z, { ttl: 1.2, size: 1.2 + speed * 0.05 });
     effect(w, "text", p.x, p.z, { text: p.kind === "tree" ? "TIMBER!" : "CRUNCH!", color: "#ffe08a", ttl: 1.6, y: 1.5 });

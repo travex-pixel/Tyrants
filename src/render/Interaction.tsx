@@ -25,7 +25,7 @@ export function Interaction() {
   const { gl, camera, size } = useThree();
   const pointers = useRef(new Map<number, PointerInfo>());
   const dragging = useRef<{ creatureId: number; projectileId?: number; lastX: number; lastZ: number; vx: number; vz: number; lastT: number } | null>(null);
-  const painting = useRef<{ dir: 1 | -1; last: number } | null>(null);
+  const painting = useRef<{ kind: "terraform" | "spawn" | "lightning" | "bless"; dir: 1 | -1; last: number; count: number; pointerId?: number } | null>(null);
   const pinch = useRef<{ dist: number; angle: number } | null>(null);
   const pendingGrab = useRef<{ creatureId: number | null; nodeId: number | null; sx: number; sy: number } | null>(null);
   const hoverTimer = useRef(0);
@@ -127,6 +127,49 @@ export function Interaction() {
     return true;
   };
 
+  // one stroke of the armed paint power under the live pointer; called on pointerdown and every frame while held
+  const paintStroke = () => {
+      const st = useGame.getState();
+      const s = getSession();
+      const now = performance.now();
+      if (painting.current && s) {
+        const pk = painting.current;
+        const interval = pk.kind === "spawn" ? 150 : pk.kind === "lightning" ? 230 : pk.kind === "bless" ? 320 : 140;
+        if (now - pk.last > interval) {
+          pk.last = now;
+          // re-sample under the finger every stroke so a stationary hold (or a gliding camera) still paints
+          const pp = pk.pointerId !== undefined ? pointers.current.get(pk.pointerId) : undefined;
+          const live = pp ? worldPoint(pp.x, pp.y) : null;
+          if (live) st.setCursorWorld({ x: live.x, z: live.z, valid: live.islandId > 0 });
+          const cw = live ? { x: live.x, z: live.z, valid: live.islandId > 0 } : st.cursorWorld;
+          if (cw.valid) {
+            let r: { ok: boolean; reason?: string } = { ok: true };
+            if (pk.kind === "terraform") {
+              const dir = (st.cooldowns.terraLower ?? 0) > now ? -1 : pk.dir;
+              r = s.dispatch({ type: "terraform", x: cw.x, z: cw.z, dir, radius: 2.6, player: s.me.id });
+              if (r.ok) audio.terraform();
+            } else if (pk.kind === "spawn") {
+              r = s.dispatch({ type: "spawn", species: st.spawnSpecies, x: cw.x + (Math.random() - 0.5) * 0.8, z: cw.z + (Math.random() - 0.5) * 0.8, player: s.me.id });
+              if (r.ok) {
+                audio.boing();
+                buzz(10);
+              }
+            } else if (pk.kind === "lightning") {
+              r = s.dispatch({ type: "lightning", x: cw.x + (Math.random() - 0.5) * 1.2, z: cw.z + (Math.random() - 0.5) * 1.2, player: s.me.id });
+              if (r.ok) buzz(30);
+            } else if (pk.kind === "bless") {
+              r = s.dispatch({ type: "bless", x: cw.x, z: cw.z, player: s.me.id });
+            }
+            pk.count++;
+            if (!r.ok && r.reason && now - (st.cooldowns.paintWarn ?? 0) > 1500 && r.reason !== "Nobody there to bless") {
+              st.setCooldown("paintWarn", now);
+              st.toast(r.reason, "bad");
+            }
+          }
+        }
+      }
+  };
+
   const tap = (sx: number, sy: number, button: number) => {
     const s = getSession();
     const st = useGame.getState();
@@ -167,38 +210,11 @@ export function Interaction() {
     }
     const hit = pickCreature(sx, sy, isTouch.current ? 42 : 30);
     switch (st.power) {
-      case "spawn": {
-        if (!cooldownOk("spawn")) return;
-        const r = s.dispatch({ type: "spawn", species: st.spawnSpecies, x: wp.x, z: wp.z, player: me });
-        if (!r.ok) {
-          st.toast(r.reason, "bad");
-          audio.bad();
-        } else {
-          audio.boing();
-          buzz(15);
-        }
-        return;
-      }
-      case "lightning": {
-        if (w.flags.peaceful) {
-          st.toast("Peaceful Kingdom: no lightning allowed", "bad");
-          return;
-        }
-        if (!cooldownOk("lightning")) return;
-        const r = s.dispatch({ type: "lightning", x: wp.x, z: wp.z, player: me });
-        if (!r.ok) st.toast(r.reason, "bad");
-        else buzz(40);
-        return;
-      }
-      case "bless": {
-        if (!cooldownOk("bless")) return;
-        const r = s.dispatch({ type: "bless", x: wp.x, z: wp.z, player: me });
-        if (!r.ok) {
-          st.toast(r.reason, "bad");
-          audio.bad();
-        }
-        return;
-      }
+      case "spawn":
+      case "lightning":
+      case "bless":
+      case "terraform":
+        return; // handled by the paint stroke that started on pointer-down
       case "storm": {
         if (!cooldownOk("storm")) return;
         const r = s.dispatch({ type: "storm", x: wp.x, z: wp.z, player: me });
@@ -217,8 +233,6 @@ export function Interaction() {
         else audio.spawn();
         return;
       }
-      case "terraform":
-        return; // handled by painting
       default: {
         if (hit !== null) {
           st.select(hit);
@@ -261,26 +275,31 @@ export function Interaction() {
       const st = useGame.getState();
       const s = getSession();
       if (!s) return;
-      if (e.button === 0 && st.power === "terraform" && !st.buildType) {
-        painting.current = { dir: keys.current.has("Shift") || st.cursorWorld.valid === false ? -1 : 1, last: 0 };
-        if (keys.current.has("Shift") || (useGame.getState().cooldowns.terraLower ?? 0) > 0) painting.current.dir = -1;
+      if (e.button === 0 && !st.buildType && (st.power === "terraform" || st.power === "spawn" || st.power === "lightning" || st.power === "bless")) {
+        // a tool is armed: hold and drag to paint it across the world
+        if (st.power === "lightning" && w0flags(s)) {
+          st.toast("Peaceful Kingdom: no lightning allowed", "bad");
+          return;
+        }
+        const dig = (useGame.getState().cooldowns.terraLower ?? 0) > performance.now() || keys.current.has("Shift");
+        const wp0 = worldPoint(e.clientX, e.clientY);
+        if (wp0) st.setCursorWorld({ x: wp0.x, z: wp0.z, valid: wp0.islandId > 0 });
+        painting.current = { kind: st.power, dir: dig ? -1 : 1, last: 0, count: 0, pointerId: e.pointerId };
+        paintStroke();
         return;
       }
       if (e.button === 2 && st.power === "terraform") {
-        painting.current = { dir: -1, last: 0 };
+        painting.current = { kind: "terraform", dir: -1, last: 0, count: 0, pointerId: e.pointerId };
+        paintStroke();
         return;
       }
-      if (e.button === 0 && !st.buildType) {
+      if (e.button === 0 && !st.buildType && (st.power === "grab" || st.intro >= 0)) {
         const hit = pickCreature(e.clientX, e.clientY, isTouch.current ? 46 : 34);
         const node = hit === null && st.intro < 0 ? pickNode(e.clientX, e.clientY, isTouch.current ? 36 : 26) : null;
-        if (hit !== null || node !== null) {
-          // drag always grabs. With no tool armed, grab immediately; with a tool armed, wait for a drag
-          // so that a clean tap still applies the tool to that creature.
-          if (st.power === "grab" || (st.intro >= 2 && st.intro <= 3)) startGrab(hit, node, e.clientX, e.clientY);
-          else pendingGrab.current = { creatureId: hit, nodeId: node, sx: e.clientX, sy: e.clientY };
-        }
+        if (hit !== null || node !== null) startGrab(hit, node, e.clientX, e.clientY);
       }
     };
+    const w0flags = (s: NonNullable<ReturnType<typeof getSession>>) => !!s.world.flags.peaceful;
     const startGrab = (hit: number | null, node: number | null, cx: number, cy: number) => {
       const st = useGame.getState();
       const s = getSession();
@@ -329,11 +348,7 @@ export function Interaction() {
       p.x = e.clientX;
       p.y = e.clientY;
       if (Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 7) p.moved = true;
-      if (pendingGrab.current && Math.hypot(e.clientX - pendingGrab.current.sx, e.clientY - pendingGrab.current.sy) > 8) {
-        const pg = pendingGrab.current;
-        pendingGrab.current = null;
-        startGrab(pg.creatureId, pg.nodeId, e.clientX, e.clientY);
-      }
+
       if (pointers.current.size === 2 && pinch.current) {
         const [a, b] = Array.from(pointers.current.values());
         const d = Math.hypot(a.x - b.x, a.y - b.y);
@@ -444,7 +459,7 @@ export function Interaction() {
             const f = w.factions[s2.myFaction];
             const cf = Object.values(w.buildings).find((b) => b.faction === f.id && b.type === "campfire");
             const home = w.islands.find((i) => i.id === f.homeIslandId) ?? w.islands[0];
-            st2.focusCamera(cf ? cf.x : home.spawnPoint.x, cf ? cf.z : home.spawnPoint.z, 52);
+            st2.focusCamera(cf ? cf.x : home.spawnPoint.x, cf ? cf.z : home.spawnPoint.z, 34);
             audio.whooshCamera();
             return;
           }
@@ -533,19 +548,7 @@ export function Interaction() {
     const st = useGame.getState();
     const s = getSession();
     const now = performance.now();
-    if (painting.current && s && now - painting.current.last > 140) {
-      painting.current.last = now;
-      const cw = st.cursorWorld;
-      if (cw.valid) {
-        const dir = (st.cooldowns.terraLower ?? 0) > now ? -1 : painting.current.dir;
-        const r = s.dispatch({ type: "terraform", x: cw.x, z: cw.z, dir, radius: 2.6, player: s.me.id });
-        if (r.ok) audio.terraform();
-        else if (now - (st.cooldowns.terraWarn ?? 0) > 1500) {
-          st.setCooldown("terraWarn", now);
-          st.toast(r.reason, "bad");
-        }
-      }
-    }
+    paintStroke();
     // ghost building preview
     if (ghost.current) {
       const w = getWorld();

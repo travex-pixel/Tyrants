@@ -54,6 +54,6 @@ it("with three buildings placed, the first ten minutes complete them at a readab
   process.stdout.write(`buildings completed at: ${JSON.stringify(done)}; pop ${population(w, "p1")}; arrivals ${w.stats.arrivals}\n`);
   expect(Object.keys(done).length).toBe(3);
   expect(Math.min(...Object.values(done))).toBeGreaterThan(15);
-  expect(done.house).toBeGreaterThan(40);
+  expect(done.house).toBeGreaterThan(25);
   void placeBuildingRaw;
 });

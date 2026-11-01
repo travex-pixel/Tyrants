@@ -380,13 +380,14 @@ function computeDressing(island: Island): Dressing {
 }
 
 function dressingKey(island: Island): string {
+  // repaint when buildings change; tree shade only re-bakes when the tree count moves by a tenth
   const w = getWorld();
   if (!w) return "";
   let b = 0;
   let t = 0;
   for (const id in w.buildings) if (w.buildings[id].islandId === island.id) b += w.buildings[id].id * (w.buildings[id].complete ? 3 : 1);
-  for (const id in w.nodes) if (w.nodes[id].islandId === island.id && w.nodes[id].kind === "tree" && w.nodes[id].amount > 0) t += w.nodes[id].id;
-  return `${b}:${t}`;
+  for (const id in w.nodes) if (w.nodes[id].islandId === island.id && w.nodes[id].kind === "tree" && w.nodes[id].amount > 0) t++;
+  return `${b}:${Math.round(t / Math.max(10, t * 0.1))}`;
 }
 
 export function IslandMesh({ island }: { island: Island }) {
@@ -428,7 +429,7 @@ export function IslandMesh({ island }: { island: Island }) {
     }
     // buildings / trees changed → repaint paths and contact shadows (checked every 2s)
     dressTimer.current += dt;
-    if (dressTimer.current > 2) {
+    if (dressTimer.current > 4) {
       dressTimer.current = 0;
       const k = dressingKey(island);
       if (k !== dressKey.current) {

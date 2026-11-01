@@ -4,11 +4,11 @@ import * as THREE from "three";
 class CameraController {
   target = new THREE.Vector3(32, 1.5, 32);
   desired = new THREE.Vector3(32, 1.5, 32);
-  dist = 52;
-  desiredDist = 52;
+  dist = 34;
+  desiredDist = 34;
   yaw = 0.6;
   desiredYaw = 0.6;
-  minDist = 12;
+  minDist = 10;
   maxDist = 115;
   bounds = { minX: -40, maxX: 110, minZ: -40, maxZ: 110 };
   intro: { t: number; duration: number } | null = null;

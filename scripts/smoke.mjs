@@ -84,39 +84,47 @@ await step("grab and throw a creature via pointer", async () => {
   }
   if (thrown < 1) throw new Error("throw not registered");
   await shot("04-thrown");
-  await page.waitForSelector("text=Make a friend.", { timeout: 12000 });
+  await page.waitForSelector("text=Pour out some friends.", { timeout: 12000 });
 });
-await step("tutorial: friend, sun, farm", async () => {
-  // Friend is pre-armed: tap the ground
-  let spot = null;
-  for (let k = 0; k < 6; k++) {
-    spot = await page.evaluate((kk) => window.__lt.buildSpotScreen(kk), k);
-    if (spot && spot.y > 120 && spot.y < 560 && spot.x > 80 && spot.x < 1200) break;
+await step("tutorial: pour friends, zap", async () => {
+  await page.waitForSelector("text=Pour out some friends.", { timeout: 15000 });
+  const stroke = async () => {
+    let spot = null;
+    for (let k = 0; k < 6; k++) {
+      spot = await page.evaluate((kk) => window.__lt.buildSpotScreen(kk), k);
+      if (spot && spot.y > 140 && spot.y < 560 && spot.x > 120 && spot.x < 1100) break;
+    }
+    await page.mouse.move(spot.x, spot.y);
+    await page.mouse.down();
+    for (let i = 0; i < 6; i++) {
+      await page.mouse.move(spot.x + i * 25, spot.y + i * 6);
+      await page.waitForTimeout(260);
+    }
+    await page.mouse.up();
+  };
+  for (let a = 0; a < 3; a++) {
+    await stroke();
+    await page.waitForTimeout(800);
+    if ((await page.evaluate(() => window.__lt.ui())).intro >= 5) break;
   }
-  for (let i = 0; i < 4; i++) {
-    await page.mouse.click(spot.x + i * 10, spot.y);
-    await page.waitForTimeout(1200);
-    if ((await page.evaluate(() => window.__lt.stats())).spawned > 7) break;
+  await page.waitForSelector("text=Now zap something.", { timeout: 15000 });
+  await shot("04b-friends");
+  for (let a = 0; a < 3; a++) {
+    await stroke();
+    await page.waitForTimeout(800);
+    if ((await page.evaluate(() => window.__lt.ui())).intro >= 6 || (await page.evaluate(() => window.__lt.ui())).intro < 0) break;
   }
-  await page.waitForSelector("text=Shine the Sun on them.", { timeout: 15000 });
-  await shot("04b-friend");
-  for (let i = 0; i < 4; i++) {
-    const c = await page.evaluate(() => window.__lt.creatureScreenPos());
-    await page.mouse.click(c.x, c.y);
-    await page.waitForTimeout(1500);
-    if ((await page.evaluate(() => window.__lt.stats())).blessed >= 1) break;
-  }
-  await page.waitForSelector("text=Build them a Farm.", { timeout: 15000 });
-  await page.waitForTimeout(500);
-  await page.locator('button.tile').filter({ hasText: /^Farm/ }).first().click({ force: true });
-  await page.waitForTimeout(400);
-  spot = await page.evaluate(() => window.__lt.buildSpotScreen(2));
-  await page.mouse.click(spot.x, spot.y);
-  await page.waitForSelector("text=Your neighbours are getting stronger.", { timeout: 15000 });
   await shot("04c-tutorial-done");
+  for (let i = 0; i < 20; i++) {
+    const ui = await page.evaluate(() => window.__lt.ui());
+    if (ui.intro < 0) break;
+    await page.waitForTimeout(500);
+  }
 });
-await step("finish intro via Build", async () => {
-  await page.locator("div.z-30 button:has-text(\"Keep building\")").first().click({ force: true });
+await step("intro finished, HUD visible", async () => {
+  const ui = await page.evaluate(() => window.__lt.ui());
+  if (ui.intro >= 0) throw new Error(`intro still at stage ${ui.intro}`);
+  await page.locator('button.token:has-text("Build")').first().click({ force: true });
   await page.waitForTimeout(600);
   await shot("05-build-menu");
 });
@@ -131,31 +139,47 @@ await step("place a lumber camp", async () => {
   await page.waitForTimeout(500);
   const n = await page.evaluate(() => window.__lt.buildingCount());
   if (n < 2) throw new Error(`expected a planned building, got ${n}`);
+  // the Book is hidden for the first ten minutes; skip ahead so later steps can open it
+  await page.evaluate(() => window.__lt.fastForward(620));
   await shot("06-lumber-placed");
 });
 await step("spawn ten goblins", async () => {
   await page.keyboard.press("1");
   const spot = await page.evaluate(() => window.__lt.buildSpotScreen(0));
-  for (let i = 0; i < 10; i++) {
-    await page.mouse.click(spot.x + (i % 5) * 12, spot.y + Math.floor(i / 5) * 12);
-    await page.waitForTimeout(60);
+  const before = (await page.evaluate(() => window.__lt.stats())).pop;
+  await page.mouse.move(spot.x, spot.y);
+  await page.mouse.down();
+  for (let i = 0; i < 8; i++) {
+    await page.mouse.move(spot.x + i * 20, spot.y + (i % 2) * 10);
+    await page.waitForTimeout(220);
   }
+  await page.mouse.up();
   await page.waitForTimeout(400);
   const pop = await page.evaluate(() => window.__lt.stats().pop);
-  if (pop < 14) throw new Error(`pop ${pop}`);
+  if (pop < before + 3) throw new Error(`pop ${before} -> ${pop}`);
   await shot("07-goblins");
 });
 await step("lightning + bless", async () => {
   await page.keyboard.press("2");
   const c = await page.evaluate(() => window.__lt.creatureScreenPos());
-  await page.mouse.click(c.x, c.y);
+  const st0 = await page.evaluate(() => window.__lt.stats());
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.waitForTimeout(500);
+  await page.mouse.up();
   await page.waitForTimeout(250);
   await shot("08-lightning");
   await page.keyboard.press("3");
-  await page.mouse.click(c.x + 40, c.y);
+  await page.mouse.move(c.x + 40, c.y);
+  await page.mouse.down();
+  await page.waitForTimeout(500);
+  await page.mouse.up();
   await page.waitForTimeout(400);
   const st = await page.evaluate(() => window.__lt.stats());
-  if (st.struck < 1 || st.blessed < 1) throw new Error(`struck ${st.struck} blessed ${st.blessed}`);
+  if (st.struck <= st0.struck || st.blessed <= st0.blessed) {
+    const dbg = await page.evaluate(() => ({ ui: window.__lt.ui(), cur: window.__lt.cursor() }));
+    throw new Error(`struck ${st0.struck}->${st.struck} blessed ${st0.blessed}->${st.blessed} at ${JSON.stringify(c)} ${JSON.stringify(dbg)}`);
+  }
 });
 await step("terraform", async () => {
   await page.keyboard.press("4");
@@ -210,14 +234,15 @@ await step("save, reload, continue", async () => {
   await page.locator('button:has-text("Settings")').first().click({ force: true });
   await page.waitForTimeout(400);
   await page.locator('button:has-text("Save now")').first().click({ force: true });
-  await page.waitForTimeout(600);
+  await page.waitForSelector("text=World saved", { timeout: 15000 });
+  await page.waitForTimeout(1500);
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForSelector("text=Continue World", { timeout: 20000 });
   await shot("13-menu");
   await page.click("text=Continue World");
   await page.waitForTimeout(1500);
   const st = await page.evaluate(() => window.__lt.stats());
-  if (st.pop < 14) throw new Error(`pop after reload ${st.pop}`);
+  if (st.pop < 15) throw new Error(`pop after reload ${st.pop}`);
   await shot("14-continued");
 });
 await step("mobile viewport", async () => {

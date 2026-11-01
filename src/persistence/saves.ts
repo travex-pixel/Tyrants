@@ -102,7 +102,7 @@ export function loadSettings(): Settings {
   if (typeof localStorage === "undefined") return DEFAULT_SETTINGS;
   // sensible default for phones/tablets: medium (no post-processing, lighter shadows)
   const mobile = typeof navigator !== "undefined" && navigator.maxTouchPoints > 0 && Math.min(window.innerWidth, window.innerHeight) < 900;
-  const base: Settings = { ...DEFAULT_SETTINGS, quality: mobile ? "medium" : "high" };
+  const base: Settings = { ...DEFAULT_SETTINGS, quality: mobile ? "low" : "medium" };
   try {
     return { ...base, ...(JSON.parse(localStorage.getItem("lt:settings") ?? "{}") as Partial<Settings>) };
   } catch {
