@@ -117,13 +117,13 @@ export interface BuildingDef {
 
 export const BUILDINGS: Record<BuildingType, BuildingDef> = {
   campfire: { type: "campfire", name: "Campfire", cost: { wood: 4 }, work: 5, footprint: 1, text: "Heart of a settlement. Creatures eat, rest and gossip here. Acts as a drop-off point." },
-  storage: { type: "storage", name: "Storage Hut", cost: { wood: 10 }, work: 11, footprint: 1, text: "A drop-off point for gathered resources. Shortens hauling trips." },
-  lumber: { type: "lumber", name: "Lumber Camp", cost: { wood: 8, stone: 2 }, work: 20, footprint: 1, text: "Keeps three woodcutters busy and makes chopping faster nearby.", workers: { job: "gather", count: 3 } },
-  farm: { type: "farm", name: "Farm", cost: { wood: 6 }, work: 16, footprint: 2, text: "Grows crops that farmers tend and harvest for food.", workers: { job: "farm", count: 2 } },
-  house: { type: "house", name: "Small House", cost: { wood: 12, stone: 4 }, work: 30, footprint: 1, capacity: 3, text: "Homes three creatures. Sleeping indoors restores more energy and happiness." },
-  workshop: { type: "workshop", name: "Workshop", cost: { wood: 16, stone: 10 }, work: 24, footprint: 2, text: "Builders work 40% faster across the settlement and construction skill grows quicker." },
-  totem: { type: "totem", name: "Totem", cost: { stone: 8, wood: 4 }, work: 10, footprint: 1, text: "A monument to your ego. Raises happiness nearby and marks territory.", unlock: "first_workshop" },
-  monument: { type: "monument", name: "Sky Monument", cost: { wood: 60, stone: 40 }, work: 75, footprint: 2, text: "The great work. Completing it proclaims your ascendancy over the archipelago. Requires Overlord level 6.", unlock: "level_6" },
+  storage: { type: "storage", name: "Storage Hut", cost: { wood: 10 }, work: 18, footprint: 1, text: "A drop-off point for gathered resources. Shortens hauling trips." },
+  lumber: { type: "lumber", name: "Lumber Camp", cost: { wood: 8, stone: 2 }, work: 30, footprint: 1, text: "Keeps three woodcutters busy and makes chopping faster nearby.", workers: { job: "gather", count: 3 } },
+  farm: { type: "farm", name: "Farm", cost: { wood: 6 }, work: 26, footprint: 2, text: "Grows crops that farmers tend and harvest for food.", workers: { job: "farm", count: 2 } },
+  house: { type: "house", name: "Small House", cost: { wood: 12, stone: 4 }, work: 45, footprint: 1, capacity: 3, text: "Homes three creatures. Sleeping indoors restores more energy and happiness." },
+  workshop: { type: "workshop", name: "Workshop", cost: { wood: 16, stone: 10 }, work: 40, footprint: 2, text: "Builders work 40% faster across the settlement and construction skill grows quicker." },
+  totem: { type: "totem", name: "Totem", cost: { stone: 8, wood: 4 }, work: 16, footprint: 1, text: "A monument to your ego. Raises happiness nearby and marks territory.", unlock: "first_workshop" },
+  monument: { type: "monument", name: "Sky Monument", cost: { wood: 60, stone: 40 }, work: 110, footprint: 2, text: "The great work. Completing it proclaims your ascendancy over the archipelago. Requires Overlord level 6.", unlock: "level_6" },
 };
 
 export const RESOURCE_NAMES: Record<ResourceType, string> = { wood: "Wood", stone: "Stone", food: "Food" };

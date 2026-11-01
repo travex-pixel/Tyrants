@@ -23,12 +23,13 @@ export function updateDirector(w: World) {
   for (let i = w.chronicle.length - 1; i >= 0; i--) {
     const e = w.chronicle[i];
     if (w.time - e.t > 60) break;
-    if (e.faction === w.playerFaction || e.kind === "disaster" || e.kind === "rival" || e.kind === "milestone") tension += e.importance;
+    const mine = e.faction === w.playerFaction || e.faction === undefined;
+    if ((mine && e.importance >= 2) || e.kind === "disaster" || (e.kind === "rival" && e.importance >= 3)) tension += e.importance;
   }
   tension += ((w.flags.mayhem as number) ?? 0) * 0.5;
   const lastIncident = (w.flags.directorAt as number) ?? 0;
   const lull = (w.flags.directorLull as number) ?? 45;
-  if (tension >= 5 || w.time - lastIncident < lull) return;
+  if (tension >= 4 || w.time - lastIncident < lull) return;
   // quiet: fire something
   const rng = worldRng(w);
   const level = w.level;
