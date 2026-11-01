@@ -2,7 +2,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useEffect, useRef } from "react";
-import { Sky, Clouds } from "./Sky";
+import { Sky, Clouds, IntroClouds } from "./Sky";
 import { Terrain } from "./Terrain";
 import { Vegetation } from "./Vegetation";
 import { Creatures } from "./Creatures";
@@ -69,6 +69,7 @@ export function GameCanvas() {
         <Ticker />
         <Sky />
         <Clouds />
+        <IntroClouds />
         <Terrain />
         <Vegetation />
         <Creatures />

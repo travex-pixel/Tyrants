@@ -114,6 +114,62 @@ export function Sky() {
   );
 }
 
+/** Dense cloud bank the camera descends through during the intro; fades away afterwards. */
+export function IntroClouds() {
+  const intro = useGame((s) => s.intro);
+  const group = useRef<THREE.Group>(null);
+  const fade = useRef(1);
+  const tex = useMemo(() => {
+    if (typeof document === "undefined") return null;
+    const c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const g = c.getContext("2d")!;
+    const grd = g.createRadialGradient(64, 64, 6, 64, 64, 64);
+    grd.addColorStop(0, "rgba(255,255,255,1)");
+    grd.addColorStop(0.45, "rgba(255,255,255,0.7)");
+    grd.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 128, 128);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+  const puffs = useMemo(() => {
+    const arr: { x: number; y: number; z: number; s: number }[] = [];
+    let seed = 99;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647), seed / 2147483647);
+    for (let i = 0; i < 70; i++) {
+      const ang = rnd() * Math.PI * 2;
+      const r = rnd() * 110;
+      arr.push({ x: 32 + Math.cos(ang) * r, y: 26 + rnd() * 60, z: 32 + Math.sin(ang) * r, s: 30 + rnd() * 40 });
+    }
+    return arr;
+  }, []);
+  const active = intro >= 0;
+  useFrame((state, dt) => {
+    if (!group.current) return;
+    const target = active && intro < 1 ? 1 : 0;
+    fade.current += (target - fade.current) * Math.min(1, dt * (target ? 2 : 0.8));
+    group.current.visible = fade.current > 0.02;
+    const t = state.clock.elapsedTime;
+    group.current.children.forEach((c, i) => {
+      const sp = c as THREE.Sprite;
+      sp.material.opacity = 0.85 * fade.current;
+      sp.position.x = puffs[i].x + Math.sin(t * 0.08 + i) * 3;
+    });
+  });
+  if (!tex) return null;
+  return (
+    <group ref={group} visible={false}>
+      {puffs.map((p, i) => (
+        <sprite key={i} position={[p.x, p.y, p.z]} scale={[p.s, p.s * 0.5, 1]}>
+          <spriteMaterial map={tex} transparent opacity={0.85} depthWrite={false} fog={false} />
+        </sprite>
+      ))}
+    </group>
+  );
+}
+
 /** Soft drifting clouds around and below the islands. */
 export function Clouds({ count = 26 }: { count?: number }) {
   const tex = useMemo(() => {

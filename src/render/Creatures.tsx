@@ -7,6 +7,7 @@ import { SPECIES } from "@/src/sim/species";
 import type { Creature } from "@/src/sim/types";
 import { useGame } from "@/src/store/game";
 import { audio } from "@/src/audio/audio";
+import { cameraCtl } from "./cameraCtl";
 
 const MAX = 220;
 const dummy = new THREE.Object3D();
@@ -112,6 +113,11 @@ export function Creatures() {
         }
       }
       rc.squash += (1 - rc.squash) * Math.min(1, dt * 6);
+      // nearby work sounds (throttled inside the audio engine)
+      if ((c.state === "gather" || c.state === "build") && !c.path && cameraCtl.dist < 30) {
+        const dcam = Math.hypot(rc.x - cameraCtl.target.x, rc.z - cameraCtl.target.z);
+        if (dcam < 14 && Math.random() < dt * 0.9) (c.state === "gather" ? audio.chop() : audio.build());
+      }
 
       writeCreature(c, rc, i, t, R, selected === c.id, hovered === c.id, cam);
       i++;

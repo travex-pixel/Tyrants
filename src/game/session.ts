@@ -81,8 +81,12 @@ export class GameSession {
   private factionForPlayer(id: string, requested: string): string {
     const w = this.world;
     if (w.meta.mpMode === "rivals") {
-      if (requested && requested !== "p1" && requested.startsWith("h_")) return requested;
-      return `h_${id}`;
+      const existing = w.players[id]?.faction;
+      if (existing) return existing;
+      if (requested && requested.startsWith("h_")) return requested;
+      // the first Overlord in a rivals world takes the pre-built starting faction; later arrivals get their own
+      const p1Taken = Object.values(w.players).some((p) => p.faction === w.playerFaction);
+      return p1Taken ? `h_${id}` : w.playerFaction;
     }
     return w.playerFaction;
   }
