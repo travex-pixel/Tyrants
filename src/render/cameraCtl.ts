@@ -4,12 +4,12 @@ import * as THREE from "three";
 class CameraController {
   target = new THREE.Vector3(32, 1.5, 32);
   desired = new THREE.Vector3(32, 1.5, 32);
-  dist = 38;
-  desiredDist = 38;
+  dist = 52;
+  desiredDist = 52;
   yaw = 0.6;
   desiredYaw = 0.6;
-  minDist = 5;
-  maxDist = 120;
+  minDist = 12;
+  maxDist = 115;
   bounds = { minX: -40, maxX: 110, minZ: -40, maxZ: 110 };
   intro: { t: number; duration: number } | null = null;
   camera: THREE.PerspectiveCamera | null = null;
@@ -19,7 +19,7 @@ class CameraController {
 
   pitchFor(d: number) {
     const t = THREE.MathUtils.clamp((d - this.minDist) / (this.maxDist - this.minDist), 0, 1);
-    return THREE.MathUtils.lerp(0.62, 1.12, Math.pow(t, 0.7));
+    return THREE.MathUtils.lerp(0.72, 0.98, Math.pow(t, 0.8));
   }
 
   pan(dxPixels: number, dyPixels: number, viewportH: number) {

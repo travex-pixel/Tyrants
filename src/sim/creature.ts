@@ -7,14 +7,16 @@ import { buildingsOf, creaturesNear, islandById, nearestDropoff, nearestNode, ne
 import { chronicle, effect } from "./chronicle";
 import { assignTask, materialsDelivered, pickTask, removeTask, unassignTask, markUnreachable } from "./tasks";
 import { rebuildIslandNav } from "./world";
-import { unlockAchievement } from "./progression";
+import { unlockAchievement, addXp } from "./progression";
+import { boardSkiff, rimTowards } from "./skiffs";
+import { addMayhem, damageBuilding } from "./mayhem";
 
 const GRAVITY = 14;
 const ARRIVE = 0.22;
 
 export function isNight(w: World): boolean {
   const f = (w.time % w.dayLength) / w.dayLength;
-  return f > 0.74;
+  return f > 0.84;
 }
 /** Sun height in [-1, 1] for a day fraction; time 0 is mid-morning, sunset at ~0.72, night after 0.74. */
 export function sunHeightFor(f: number): number {
@@ -132,6 +134,7 @@ function moveAlong(w: World, c: Creature, dt: number, rng: RNG): boolean {
       c.stuckTime += dt;
     }
   }
+  if (c.scale > 1.5 && c.state !== "flee") giantStomp(w, c, dt, rng);
   const targetHeading = Math.atan2(mx, mz);
   let dh = targetHeading - c.heading;
   while (dh > Math.PI) dh -= Math.PI * 2;
@@ -152,6 +155,57 @@ function moveAlong(w: World, c: Creature, dt: number, rng: RNG): boolean {
     if (rng.chance(0.3)) unassignTask(w, c, true);
   }
   return false;
+}
+
+/** Giants are walking disasters: every step bowls bystanders, strips trees and dents buildings. */
+function giantStomp(w: World, c: Creature, dt: number, rng: RNG) {
+  const key = `stomp_${c.id}`;
+  const last = (w.flags[key] as number) ?? -10;
+  if (w.time - last < 0.5) return;
+  w.flags[key] = w.time;
+  let hit = 0;
+  for (const o of creaturesNear(w, c.x, c.z, 1.3, c.islandId)) {
+    if (o.id === c.id || o.state === "held" || o.state === "thrown" || o.state === "aboard" || o.scale > 1.5) continue;
+    interrupt(w, o, rng, true);
+    const dx = o.x - c.x;
+    const dz = o.z - c.z;
+    const d = Math.hypot(dx, dz) || 0.3;
+    o.vx = (dx / d) * 5;
+    o.vz = (dz / d) * 5;
+    o.vy = 5;
+    setState(o, "thrown");
+    remember(o, "threat", 0.8, c.id, c.x, c.z, w.time);
+    hit++;
+  }
+  if (hit) {
+    effect(w, "dust", c.x, c.z, { ttl: 0.6, size: 1.2 });
+    addMayhem(w, hit, c.x, c.z);
+  }
+  const tree = nearestNode(w, c.islandId, c.x, c.z, (n) => n.kind === "tree" && n.amount > 0, 1.1);
+  if (tree) {
+    tree.amount = Math.max(0, tree.amount - 2);
+    const isl = islandById(w, c.islandId);
+    const id = w.nextId++;
+    w.items[id] = { id, type: "wood", amount: 1, islandId: c.islandId, x: tree.x + rng.range(-0.8, 0.8), z: tree.z + rng.range(-0.8, 0.8), y: Math.max(heightAt(isl, tree.x, tree.z), isl.waterLevel) + 1.5, vx: 0, vz: 0, vy: 1, reservedBy: null };
+    if (tree.amount <= 0) {
+      tree.kind = "stump";
+      tree.regrow = 0.3;
+      rebuildIslandNav(w, isl);
+    }
+  }
+  const b = nearestBuilding(w, c.x, c.z, 1.8, (x) => x.type !== "campfire" && x.islandId === c.islandId);
+  if (b) damageBuilding(w, b, 8, `${c.name} the giant walked through it`, rng);
+  if (c.hunger > 70) {
+    const drop = nearestDropoff(w, c.faction, c.islandId, c.x, c.z);
+    const f = w.factions[c.faction];
+    if (drop && f && f.stock.food > 0 && dist2(drop.x, drop.z, c.x, c.z) < 9) {
+      const amt = Math.min(6, f.stock.food);
+      f.stock.food -= amt;
+      c.hunger = clamp(c.hunger - amt * 8, 0, 100);
+      effect(w, "text", c.x, c.z, { text: "NOM", color: "#ffd166", ttl: 1.2, y: 2.5 });
+      if (rng.chance(0.5)) chronicle(w, `${c.name} the giant ate ${amt} food straight out of the stores.`, "story", 2, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
+    }
+  }
 }
 
 function gainSkill(w: World, c: Creature, skill: SkillId, xp: number) {
@@ -278,13 +332,50 @@ function startRest(w: World, c: Creature, rng: RNG): boolean {
 function decide(w: World, c: Creature, rng: RNG) {
   c.decisionCooldown = rng.range(0.6, 1.4);
   const night = isNight(w);
+  // 0. the hand: jumpy creatures flee it, devout ones gather around it
+  for (const pid in w.players) {
+    const p = w.players[pid];
+    if (w.time - p.lastSeen > 3) continue;
+    const d2 = dist2(p.cursorX, p.cursorZ, c.x, c.z);
+    if ((c.jumpy ?? 0) >= 3 && d2 < 9) {
+      remember(c, "threat", 1, undefined, p.cursorX, p.cursorZ, w.time);
+      effect(w, "text", c.x, c.z, { text: "eek!", color: "#dfe6f0", ttl: 0.9, y: 1.4 });
+      return;
+    }
+    if ((c.devout ?? 0) >= 3 && d2 < 36 && d2 > 2.5 && rng.chance(0.6)) {
+      if (goTo(w, c, p.cursorX + rng.range(-1, 1), p.cursorZ + rng.range(-1, 1))) {
+        setState(c, "wander");
+        c.happiness = clamp(c.happiness + 1, 0, 100);
+        if (rng.chance(0.15)) effect(w, "heart", c.x, c.z, { ttl: 1, y: 1 });
+        return;
+      }
+    }
+  }
   // 1. survival
   if (c.hunger > 72 && tryEat(w, c, rng)) return;
   if ((c.energy < 18 || (night && c.energy < 70 && rng.chance(0.5))) && startRest(w, c, rng)) return;
   // 2. keep following if commanded
   if (c.followId !== null && c.state === "follow") return;
+  // 2b. evening bonfire: drift to the campfire and celebrate
+  const bonfireUntil = w.flags[`bonfireUntil_${c.faction}`] as number | undefined;
+  if (bonfireUntil && w.time < bonfireUntil && rng.chance(0.7)) {
+    const cf = nearestDropoff(w, c.faction, c.islandId, c.x, c.z);
+    if (cf && cf.type === "campfire") {
+      const a = rng.range(0, Math.PI * 2);
+      if (dist2(cf.x, cf.z, c.x, c.z) > 9) {
+        if (goTo(w, c, cf.x + Math.cos(a) * 2.2, cf.z + Math.sin(a) * 2.2)) {
+          setState(c, "wander");
+          return;
+        }
+      } else {
+        c.heading = Math.atan2(cf.x - c.x, cf.z - c.z);
+        setState(c, "celebrate");
+        return;
+      }
+    }
+  }
   // 3. task (lazy creatures skip sometimes)
-  if (!(c.traits.includes("lazy") && rng.chance(0.3)) && !night) {
+  if (!(c.traits.includes("lazy") && rng.chance(0.3)) && (!night || c.energy > 60)) {
     const t = pickTask(w, c);
     if (t) {
       assignTask(w, c, t);
@@ -399,6 +490,11 @@ function deliverCarried(w: World, c: Creature, t: Task | null) {
   f.stats.gathered += c.carrying.amount;
   if (c.faction === w.playerFaction) {
     w.stats.gathered += c.carrying.amount;
+    w.flags.xpGather = ((w.flags.xpGather as number) ?? 0) + c.carrying.amount;
+    if ((w.flags.xpGather as number) >= 10) {
+      w.flags.xpGather = (w.flags.xpGather as number) - 10;
+      addXp(w, 3, "gather");
+    }
     if (w.stats.gathered >= 100) unlockAchievement(w, "wood_100");
   }
   gainSkill(w, c, "gathering", 1);
@@ -407,8 +503,8 @@ function deliverCarried(w: World, c: Creature, t: Task | null) {
 
 function finishGather(w: World, c: Creature, n: ResourceNode, rng: RNG) {
   const sp = SPECIES[c.species];
-  const amt = Math.min(n.amount, sp.carry + (c.scale > 1.5 ? 6 : 0));
-  n.amount -= amt;
+  const amt = Math.max(1, Math.floor(Math.min(n.amount, sp.carry + (c.scale > 1.5 ? 6 : 0))));
+  n.amount = Math.max(0, n.amount - amt);
   c.carrying = { type: n.resource, amount: amt };
   n.reservedBy = null;
   if (n.resource === "wood") gainSkill(w, c, "woodcutting", 3);
@@ -478,6 +574,7 @@ export function updateCreature(w: World, c: Creature, dt: number, rng: RNG) {
   else if (c.health < 100) c.health = clamp(c.health + (c.state === "rest" ? 2 : 0.5) * dt, 0, 100);
 
   let target = 72 - c.hunger * 0.3 - (100 - c.energy) * 0.15 - (100 - c.social) * 0.12;
+  if (working) target += 8; // busy hands are happy hands
   if (w.time < c.blessedUntil) target += 25;
   if (c.homeId !== null) target += 6;
   for (const m of c.memory) {
@@ -492,6 +589,7 @@ export function updateCreature(w: World, c: Creature, dt: number, rng: RNG) {
   c.mood = scared ? "scared" : c.happiness > 65 ? "happy" : c.happiness < 35 ? "grumpy" : "neutral";
   if (c.memory.length && c.memory[0].t < w.time - 400) c.memory.shift();
 
+  if (c.state === "aboard") return; // flying in a skiff (see skiffs.ts)
   // ── Physics / vertical position (c.y is the absolute world height of the creature's feet) ──
   const groundH = Math.max(heightAt(isl, c.x, c.z), isl.waterLevel);
   if (c.state === "held") {
@@ -597,7 +695,7 @@ export function updateCreature(w: World, c: Creature, dt: number, rng: RNG) {
           c.hunger = clamp(c.hunger - 45, 0, 100);
           setState(c, "eat");
         } else {
-          const node = nearestNode(w, c.islandId, c.x, c.z, (n) => n.resource === "food" && n.kind !== "crop", 3);
+          const node = nearestNode(w, c.islandId, c.x, c.z, (n) => n.resource === "food" && n.kind !== "crop" && n.amount >= 1, 3);
           if (node) {
             node.amount = Math.max(0, node.amount - 1);
             c.hunger = clamp(c.hunger - 35, 0, 100);
@@ -653,7 +751,7 @@ export function updateCreature(w: World, c: Creature, dt: number, rng: RNG) {
       // work
       const mul = (sp.gatherMul[n.resource] ?? 1) * skillEfficiency(n.resource === "wood" ? c.skills.woodcutting : c.skills.gathering) * workMul(w, c);
       const lumberBonus = n.resource === "wood" && nearestBuilding(w, n.x, n.z, 10, (b) => b.type === "lumber" && b.complete && b.faction === c.faction) ? 1.35 : 1;
-      const need = 4.2 / (mul * lumberBonus);
+      const need = 3.4 / (mul * lumberBonus);
       if (c.stateTime >= need) {
         finishGather(w, c, n, rng);
         removeTask(w, t.id, false);
@@ -762,6 +860,8 @@ export function updateCreature(w: World, c: Creature, dt: number, rng: RNG) {
           if (c.faction === w.playerFaction) {
             w.stats.discoveries++;
             unlockAchievement(w, "discovery");
+            addXp(w, 15, "discovery");
+            effect(w, "text", d.x, d.z, { text: "Discovered!", color: "#c7a6ff", ttl: 2, y: 1.6 });
           }
           gainSkill(w, c, "exploration", 8);
           remember(c, "found", 1, undefined, d.x, d.z, w.time);
@@ -926,13 +1026,22 @@ export function completeBuilding(w: World, b: Building, by: Creature | null, rng
   }
   if (b.faction === w.playerFaction) {
     w.stats.built++;
+    addXp(w, 10 + Math.round(BUILDINGS[b.type].work), "building");
     unlockAchievement(w, "first_building");
     if (b.type === "house") unlockAchievement(w, "first_house");
     if (b.type === "workshop") unlockAchievement(w, "first_workshop");
+    if (b.type === "monument") {
+      unlockAchievement(w, "ascended");
+      w.flags.ascendedAt = w.time;
+      effect(w, "bless", b.x, b.z, { ttl: 4, size: 8 });
+      chronicle(w, `The Sky Monument is complete. The archipelago acknowledges its Little Tyrant.`, "milestone", 3, { faction: b.faction, x: b.x, z: b.z, islandId: b.islandId });
+    }
   }
   effect(w, "sparkle", b.x, b.z, { ttl: 2.5, size: 2, color: "#ffe08a" });
   const who = by ? ` ${by.name} laid the last stone.` : "";
-  chronicle(w, `${f ? f.name : "Someone"} completed a ${BUILDINGS[b.type].name}.${who}`, "build", 2, { faction: b.faction, x: b.x, z: b.z, islandId: b.islandId });
+  const firstOfType = !Object.values(w.buildings).some((o) => o.id !== b.id && o.faction === b.faction && o.type === b.type && o.complete);
+  const imp: 1 | 2 | 3 = b.faction === w.playerFaction ? 2 : firstOfType && (b.type === "workshop" || b.type === "monument") ? 3 : firstOfType ? 2 : 1;
+  chronicle(w, `${f ? f.name : "Someone"} completed a ${BUILDINGS[b.type].name}.${who}`, "build", imp, { faction: b.faction, x: b.x, z: b.z, islandId: b.islandId });
   // nearby creatures celebrate
   for (const c of creaturesNear(w, b.x, b.z, 7, b.islandId)) {
     if (c.faction !== b.faction || c.state === "held" || c.state === "thrown") continue;
@@ -980,6 +1089,7 @@ function updateThrown(w: World, c: Creature, dt: number, rng: RNG) {
     c.vz = 0;
     if (water) {
       effect(w, "splash", c.x, c.z, { ttl: 1.4, size: 1 + speed * 0.05 });
+      effect(w, "text", c.x, c.z, { text: "SPLASH!", color: "#bfe6ff", ttl: 1.4, y: 1.2 });
       if (c.raidTarget && c.carrying) {
         dropCarried(w, c, rng, 1.5);
         chronicle(w, `${c.name}'s raid ended in the lake. The loot floated back to shore.`, "rival", 3, { x: c.x, z: c.z, islandId: c.islandId });
@@ -993,6 +1103,7 @@ function updateThrown(w: World, c: Creature, dt: number, rng: RNG) {
       if (rng.chance(0.4)) chronicle(w, `${c.name} went for an involuntary swim.`, "power", 1, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
     } else {
       effect(w, "dust", c.x, c.z, { ttl: 0.8, size: 1 });
+      if (speed > 5) effect(w, "text", c.x, c.z, { text: speed > 11 ? "OOF!" : "oof", color: "#ffd9c0", ttl: 1.2, y: 1.2 });
       // land on a walkable cell
       if (!isWalkable(isl, c.x, c.z)) {
         const cell = nearestWalkableCell(isl, c.x, c.z, 6);
@@ -1001,14 +1112,38 @@ function updateThrown(w: World, c: Creature, dt: number, rng: RNG) {
           c.z = isl.oz + Math.floor(cell / isl.size) + 0.5;
         }
       }
-      // knock into other creatures / trees
-      for (const o of creaturesNear(w, c.x, c.z, 0.9, c.islandId)) {
-        if (o.id === c.id || o.state === "held" || o.state === "thrown") continue;
+      // bowling: whoever we land on is launched too (and may hit the next one)
+      const launchDir = { x: c.vx, z: c.vz };
+      let strikes = 0;
+      for (const o of creaturesNear(w, c.x, c.z, 1.1 * Math.max(1, c.scale), c.islandId)) {
+        if (o.id === c.id || o.state === "held" || o.state === "thrown" || o.state === "aboard") continue;
         interrupt(w, o, rng, true);
-        setState(o, "recover");
         relation(o, c.id, -6);
         remember(o, "threat", 0.5, c.id, c.x, c.z, w.time);
-        if (rng.chance(0.5)) chronicle(w, `${c.name} landed on ${o.name}. Neither was pleased.`, "power", 1, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
+        const dx = o.x - c.x;
+        const dz = o.z - c.z;
+        const d = Math.hypot(dx, dz) || 0.3;
+        const push = Math.max(4, speed * 0.7);
+        o.vx = (dx / d) * push * 0.5 + launchDir.x * 0.35;
+        o.vz = (dz / d) * push * 0.5 + launchDir.z * 0.35;
+        o.vy = 4.5 + Math.min(4, speed * 0.2);
+        o.y += 0.05;
+        setState(o, "thrown");
+        o.health = clamp(o.health - 6, 1, 100);
+        strikes++;
+        if (rng.chance(0.4)) chronicle(w, `${c.name} bowled straight into ${o.name}.`, "power", 1, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
+      }
+      if (strikes > 0) {
+        const chain = ((w.flags.bowlChain as number) ?? 0) + strikes;
+        w.flags.bowlChain = chain;
+        w.flags.bowlChainAt = w.time;
+        effect(w, "text", c.x, c.z, { text: chain >= 3 ? `STRIKE ×${chain}!` : "STRIKE!", color: "#ffd166", ttl: 1.4, y: 1.6 });
+        addMayhem(w, strikes * 2, c.x, c.z);
+        addXp(w, strikes * 3, "bowling");
+        if (chain >= 4 && !w.flags[`bowl4_${Math.floor(w.time)}`]) {
+          w.flags[`bowl4_${Math.floor(w.time)}`] = 1;
+          chronicle(w, `A four-creature pile-up. ${c.name} started it; nobody has finished it.`, "power", 2, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
+        }
       }
       const tree = nearestNode(w, c.islandId, c.x, c.z, (n) => n.kind === "tree" && n.amount > 0, 1.2);
       if (tree && speed > 6) {
@@ -1072,43 +1207,26 @@ function updateRaider(w: World, c: Creature, dt: number, rng: RNG) {
         c.carrying = { type: "food", amount: amt };
         const hf = w.factions[c.faction];
         if (hf) hf.stats.stolen += amt;
-        chronicle(w, `${c.name} snatched ${amt} food from your stores and legged it!`, "rival", 3, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
+        const mine = r.factionId === w.playerFaction;
+        chronicle(w, mine ? `${c.name} snatched ${amt} food from your stores and legged it!` : `${c.name} snatched ${amt} food from ${vf.name}'s stores!`, "rival", mine ? 3 : 2, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
+        if (!mine) effect(w, "text", c.x, c.z, { text: "Got it!", color: "#ffe08a", ttl: 1.5, y: 1.4 });
         effect(w, "anger", c.x, c.z, { ttl: 1.5, y: 1.2 });
-      } else chronicle(w, `${c.name} came to raid your stores but found them empty. Awkward.`, "rival", 2, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
+      } else chronicle(w, `${c.name} came to raid ${r.factionId === w.playerFaction ? "your" : (vf?.name ?? "the") + "'s"} stores but found them empty. Awkward.`, "rival", 2, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
       r.phase = "return";
       c.path = null;
     }
   } else {
+    const homeIsland = c.raidTarget?.homeIslandId ?? w.factions[c.faction]?.homeIslandId ?? c.islandId;
     if (!c.path) {
-      // walk to a coastal cell
-      const n = isl.size;
-      let far: { x: number; z: number } | null = null;
-      let bd = 0;
-      for (let i = 0; i < 40; i++) {
-        const idx = rng.int(0, n * n - 1);
-        if (isl.blocked[idx] !== 0) continue;
-        const x = isl.ox + (idx % n) + 0.5;
-        const z = isl.oz + Math.floor(idx / n) + 0.5;
-        const d = dist2(x, z, isl.center.x, isl.center.z);
-        if (d > bd) {
-          bd = d;
-          far = { x, z };
-        }
-      }
-      if (!far || !goTo(w, c, far.x, far.z)) {
-        despawnRaider(w, c);
+      const home = islandById(w, homeIsland);
+      const rim = rimTowards(isl, home.center);
+      if (!goTo(w, c, rim.x, rim.z)) {
+        boardSkiff(w, [c], homeIsland, "home", rng);
         return;
       }
     }
-    if (moveAlong(w, c, dt, rng) || c.stateTime > 90) despawnRaider(w, c);
+    if (moveAlong(w, c, dt, rng) || c.stateTime > 90) boardSkiff(w, [c], homeIsland, "home", rng);
   }
-}
-
-function despawnRaider(w: World, c: Creature) {
-  const hf = w.factions[c.faction];
-  if (hf && c.carrying) hf.stock[c.carrying.type] += c.carrying.amount;
-  effect(w, "fall", c.x, c.z, { ttl: 1.5 });
-  delete w.creatures[c.id];
 }
 
 /** Items on the ground: simple gravity and settle. it.y is absolute world height. */

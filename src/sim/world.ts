@@ -31,6 +31,12 @@ export const ACHIEVEMENTS: Omit<Achievement, "unlockedAt">[] = [
   { id: "trade", title: "Deal", text: "Complete a trade with a rival Overlord.", essence: 6 },
   { id: "raid_foiled", title: "Not Today", text: "Foil a raid by dunking the raider.", essence: 8 },
   { id: "survive_day_3", title: "Settled", text: "Reach day 3.", essence: 6 },
+  { id: "tree_throw", title: "Timber!", text: "Uproot a tree and throw it.", essence: 4 },
+  { id: "raid_sent", title: "Sticky Fingers", text: "Send a raiding party against a rival.", essence: 6 },
+  { id: "level_6", title: "Dread Tyrant", text: "Reach Overlord level 6. Unlocks the Sky Monument.", essence: 10 },
+  { id: "ascended", title: "Ascendant", text: "Complete the Sky Monument.", essence: 30 },
+  { id: "bonfire", title: "Good Vibes", text: "Hold an evening bonfire.", essence: 4 },
+  { id: "arrival", title: "Word Gets Around", text: "A creature arrives on its own, drawn by your food.", essence: 4 },
 ];
 
 export const POWER_UNLOCKS: Record<PowerId, { essence: number; after?: string }> = {
@@ -65,7 +71,7 @@ export const FACTION_COLORS = ["#f2b84b", "#5fb3f0", "#f06b8b", "#8de06a"];
 export function makeFaction(id: string, name: string, color: string, isAI: boolean, homeIslandId: number, difficulty: Faction["difficulty"] = "normal", persona?: OverlordPersona): Faction {
   return {
     id, name, color, isAI, persona, homeIslandId,
-    stock: { wood: isAI ? 14 : 12, stone: isAI ? 6 : 4, food: 16 },
+    stock: { wood: isAI ? 14 : 20, stone: isAI ? 6 : 6, food: isAI ? 16 : 24 },
     essence: 0,
     jobPriorities: { gather: 1, build: 1, farm: 1, haul: 1, explore: 0.6 },
     relations: {},
@@ -76,7 +82,8 @@ export function makeFaction(id: string, name: string, color: string, isAI: boole
     score: 0,
     difficulty,
     tradeOffers: [],
-    raidCooldown: 180,
+    raidCooldown: 120,
+    growthTimer: 0,
     stats: { gathered: 0, built: 0, thrown: 0, struck: 0, blessed: 0, stolen: 0 },
   };
 }
@@ -84,7 +91,7 @@ export function makeFaction(id: string, name: string, color: string, isAI: boole
 export function createWorld(o: CreateWorldOptions): World {
   const seed = o.seed ?? (Math.random() * 2 ** 31) | 0;
   const rng = new RNG(seed);
-  const mainSize = o.mainIslandSize ?? 64;
+  const mainSize = o.mainIslandSize ?? 72;
   const w: World = {
     meta: {
       id: `w_${seed.toString(36)}_${Date.now().toString(36)}`,
@@ -105,8 +112,15 @@ export function createWorld(o: CreateWorldOptions): World {
     weather: { kind: "clear", until: 0, intensity: 0 },
     rngState: rng.state,
     playerFaction: "p1",
-    stats: { thrown: 0, struck: 0, blessed: 0, spawned: 0, built: 0, gathered: 0, discoveries: 0 },
+    stats: { thrown: 0, struck: 0, blessed: 0, spawned: 0, built: 0, gathered: 0, discoveries: 0, treesThrown: 0, raidsSent: 0, omens: 0, arrivals: 0 },
     flags: {},
+    projectiles: {},
+    skiffs: {},
+    goals: { active: [], done: [], completedAt: {} },
+    xp: 0,
+    level: 1,
+    omen: null,
+    nextOmenAt: 45,
   };
   for (const a of ACHIEVEMENTS) w.achievements[a.id] = { ...a, unlockedAt: null };
 
@@ -153,7 +167,7 @@ export function createWorld(o: CreateWorldOptions): World {
   }
 
   // Starter creatures for the player
-  const starters = o.starterCreatures ?? (o.mode === "sandbox" ? 6 : 5);
+  const starters = o.starterCreatures ?? (o.mode === "sandbox" ? 8 : 7);
   const starterMix: SpeciesId[] = ["goblin", "goblin", "trollkin", "mushroom", "goblin", "mushroom", "trollkin", "goblin"];
   for (let i = 0; i < starters; i++) {
     const sp = findFlatSpot(main, main.spawnPoint.x, main.spawnPoint.z, 0, rng, 30, 1.5) ?? main.spawnPoint;
@@ -183,7 +197,7 @@ export function populateIsland(w: World, isl: Island, rng: RNG, opts: { treeDens
         if (spawnIdx >= 0) {
           const dx = cx - (spawnIdx % n);
           const dz = cz - Math.floor(spawnIdx / n);
-          if (dx * dx + dz * dz < 20) continue; // keep the spawn clearing open
+          if (dx * dx + dz * dz < (isl.size > 50 ? 72 : 20)) continue; // keep the spawn clearing open
         }
         const x = isl.ox + cx + 0.5;
         const z = isl.oz + cz + 0.5;
@@ -204,9 +218,9 @@ export function populateIsland(w: World, isl: Island, rng: RNG, opts: { treeDens
 
   const forestSeed = rng.int(1, 1e6);
   // Trees: clustered via noise, denser inland
-  tryPlace("tree", 0.5 * density, (h, cx, cz) => {
-    const f = fbm(cx * 0.09, cz * 0.09, forestSeed, 3);
-    return h > isl.waterLevel + 0.25 && h < 4.6 && f > 0.52;
+  tryPlace("tree", 0.42 * density, (h, cx, cz) => {
+    const f = fbm(cx * 0.08, cz * 0.08, forestSeed, 3);
+    return h > isl.waterLevel + 0.25 && h < 4.6 && f > 0.55;
   }, true, () => ({ resource: "wood", amount: 12, maxAmount: 12, regrow: 0 }));
   // Rocks: higher ground
   tryPlace("rock", 0.08 * (opts.stoneBias ?? 1), (h) => h > 2.2, true, () => ({ resource: "stone", amount: 16, maxAmount: 16, regrow: 0, scale: rng.range(0.8, 1.5) }));
@@ -288,7 +302,7 @@ export function placeBuildingRaw(w: World, type: BuildingType, faction: string, 
   const b: Building = {
     id: w.nextId++, type, faction, islandId, x, z, rotation: rng.range(0, Math.PI * 2),
     cost: { ...def.cost }, delivered: complete ? { ...def.cost } : {}, progress: complete ? 1 : 0, complete, work: def.work, workDone: complete ? def.work : 0,
-    occupants: [], cropTimer: 0, level: 1, placedAt: w.time,
+    occupants: [], cropTimer: 0, level: 1, placedAt: w.time, hp: 100,
   };
   w.buildings[b.id] = b;
   markBuildingCells(w, b, true);

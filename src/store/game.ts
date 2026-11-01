@@ -75,6 +75,12 @@ interface GameStore {
   setCooldown: (p: string, until: number) => void;
   commandMode: boolean;
   setCommandMode: (v: boolean) => void;
+  pouchOpen: boolean;
+  setPouchOpen: (v: boolean) => void;
+  bookTab: Panel;
+  setBookTab: (p: Panel) => void;
+  journalExpanded: boolean;
+  setJournalExpanded: (v: boolean) => void;
 }
 
 let toastId = 1;
@@ -93,11 +99,11 @@ export const useGame = create<GameStore>((set) => ({
   selectedIsland: null,
   selectIsland: (id) => set({ selectedIsland: id, selectedCreature: null, selectedBuilding: null }),
   power: "grab",
-  setPower: (power) => set({ power, buildType: null }),
+  setPower: (power) => set({ power, buildType: null, pouchOpen: false }),
   spawnSpecies: "goblin",
   setSpawnSpecies: (spawnSpecies) => set({ spawnSpecies }),
   buildType: null,
-  setBuildType: (buildType) => set({ buildType, panel: "none" }),
+  setBuildType: (buildType) => set({ buildType, panel: "none", pouchOpen: false }),
   panel: "none",
   setPanel: (panel) => set((s) => ({ panel: s.panel === panel ? "none" : panel })),
   toasts: [],
@@ -132,4 +138,10 @@ export const useGame = create<GameStore>((set) => ({
   setCooldown: (p, until) => set((s) => ({ cooldowns: { ...s.cooldowns, [p]: until } })),
   commandMode: false,
   setCommandMode: (commandMode) => set({ commandMode }),
+  pouchOpen: false,
+  setPouchOpen: (pouchOpen) => set({ pouchOpen }),
+  bookTab: "chronicle",
+  setBookTab: (bookTab) => set({ bookTab, panel: bookTab }),
+  journalExpanded: false,
+  setJournalExpanded: (journalExpanded) => set({ journalExpanded }),
 }));

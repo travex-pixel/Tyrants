@@ -39,6 +39,8 @@ export function CreaturePanel({ id }: { id: number }) {
   const setFollow = useGame((s) => s.setFollow);
   const focus = useGame((s) => s.focusCamera);
   const commandMode = useGame((s) => s.commandMode);
+  const expanded = useGame((s) => s.journalExpanded);
+  const setExpanded = useGame((s) => s.setJournalExpanded);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const w = getWorld();
@@ -95,6 +97,22 @@ export function CreaturePanel({ id }: { id: number }) {
         </button>
       </div>
       <div className="mt-2 text-[13px] font-bold">{STATE_TEXT[c.state] ?? c.state}{c.carrying ? ` · carrying ${c.carrying.amount} ${c.carrying.type}` : ""}</div>
+      <div className="flex gap-2 mt-3">
+        <Bar v={100 - c.hunger} color="#c9412f" label="Food" />
+        <Bar v={c.energy} color="#3f7fb0" label="Energy" />
+        <Bar v={c.happiness} color="#e9a93c" label="Mood" />
+        <Bar v={c.health} color="#4f8a3a" label="Health" />
+      </div>
+      <div className="flex gap-2 mt-3">
+        <button className={`btn btn-sm flex-1 ${follow ? "btn-primary" : ""}`} onClick={() => { setFollow(!follow); audio.click(); }}>
+          <Icons.eye style={{ width: 14, height: 14 }} /> {follow ? "Following" : "Follow"}
+        </button>
+        <button className="btn btn-sm flex-1" onClick={() => focus(c.x, c.z, 18)}>
+          <Icons.target style={{ width: 14, height: 14 }} /> Find
+        </button>
+        <button className="btn btn-sm" onClick={() => { setExpanded(!expanded); audio.click(); }} title="More about this creature">…</button>
+      </div>
+      {expanded && (<>
       <div className="flex gap-1 flex-wrap mt-2">
         {c.traits.map((t) => (
           <span key={t} className="chip" style={{ padding: "3px 8px", fontSize: 11 }} title={TRAITS[t].text}>
@@ -102,12 +120,6 @@ export function CreaturePanel({ id }: { id: number }) {
           </span>
         ))}
         {w.time < c.blessedUntil && <span className="chip" style={{ padding: "3px 8px", fontSize: 11, color: "#7a4a10" }}>Blessed</span>}
-      </div>
-      <div className="flex gap-2 mt-3">
-        <Bar v={100 - c.hunger} color="#c9412f" label="Food" />
-        <Bar v={c.energy} color="#3f7fb0" label="Energy" />
-        <Bar v={c.happiness} color="#e9a93c" label="Mood" />
-        <Bar v={c.health} color="#4f8a3a" label="Health" />
       </div>
       <div className="mt-3 row text-[12px] font-semibold flex-wrap" style={{ gap: 6 }}>
         <span className="label">Skills</span>
@@ -133,19 +145,24 @@ export function CreaturePanel({ id }: { id: number }) {
           Remembers: {memory.map((m) => memoryText(m.kind, m.who !== undefined ? w.creatures[m.who]?.name : undefined)).join(" · ")}
         </div>
       )}
-      <div className="flex gap-2 mt-3">
-        <button className={`btn btn-sm flex-1 ${follow ? "btn-primary" : ""}`} onClick={() => { setFollow(!follow); audio.click(); }}>
-          <Icons.eye style={{ width: 14, height: 14 }} /> {follow ? "Following" : "Follow"}
-        </button>
-        <button className="btn btn-sm flex-1" onClick={() => focus(c.x, c.z, 14)}>
-          <Icons.target style={{ width: 14, height: 14 }} /> Find
-        </button>
-        {mine && (
+      {mine && (
+        <div className="mt-3 row flex-wrap" style={{ gap: 4 }}>
+          <span className="label">Job</span>
+          {([null, "gather", "build", "farm", "explore"] as (JobId | null)[]).map((j) => (
+            <button key={j ?? "any"} className={`btn btn-sm ${(c.jobPref ?? null) === j ? "btn-primary" : ""}`} style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => { s.dispatch({ type: "setJobPref", creatureId: c.id, job: j, player: s.me.id }); audio.click(); }}>
+              {j ? JOB_NAMES[j] : "Any"}
+            </button>
+          ))}
+        </div>
+      )}
+      {mine && (
+        <div className="flex gap-2 mt-3">
           <button className={`btn btn-sm flex-1 ${commandMode ? "btn-primary" : ""}`} title="Then tap the ground (or right-click anytime)" onClick={() => { useGame.getState().setCommandMode(!commandMode); useGame.getState().toast(commandMode ? "Send cancelled" : `Tap the ground to send ${c.name} there`, "info"); }}>
-            {commandMode ? "Tap ground…" : "Send"}
+            {commandMode ? "Tap ground…" : "Send somewhere"}
           </button>
-        )}
-      </div>
+        </div>
+      )}
+      </>)}
     </div>
   );
 }
@@ -252,7 +269,7 @@ export function BuildMenu() {
               className={`btn flex-col items-start gap-1 text-left ${locked ? "opacity-50" : ""}`}
               style={{ padding: "10px 12px" }}
               disabled={!!locked}
-              title={locked ? `Unlock: ${w.achievements[d.unlock!]?.title}` : d.text}
+              title={locked ? (t === "monument" ? "Reach Overlord level 6" : `Unlock: ${w.achievements[d.unlock!]?.title}`) : d.text}
               onClick={() => {
                 setBuildType(t);
                 audio.click();
@@ -389,6 +406,22 @@ export function RivalPanel({ islandId }: { islandId?: number }) {
                 </button>
               ))}
             </div>
+            {w.meta.mode !== "sandbox" && (
+              <button
+                className="btn btn-sm btn-danger w-full mt-2"
+                title="Two of your bravest creatures fly over by sky-skiff, rob their food stores and come home. They will not forgive this."
+                onClick={() => {
+                  const r = s.dispatch({ type: "raid", targetFaction: f.id, player: s.me.id });
+                  if (!r.ok) useGame.getState().toast(r.reason, "bad");
+                  else {
+                    audio.throwWhoosh(1);
+                    useGame.getState().toast(`Raiders dispatched to ${f.name}!`, "story");
+                  }
+                }}
+              >
+                <Icons.skull style={{ width: 14, height: 14 }} /> Send raiders
+              </button>
+            )}
           </div>
         );
       })}
@@ -544,7 +577,10 @@ export function AchievementsPanel() {
 export function SettingsPanel({ inMenu, onReplayIntro }: { inMenu?: boolean; onReplayIntro?: () => void }) {
   const settings = useGame((s) => s.settings);
   const set = useGame((s) => s.setSettings);
-  const Slider = ({ k, label }: { k: "master" | "sfx" | "ambient"; label: string }) => (
+  useGame((s) => s.uiTick);
+  const sess = getSession();
+  const wld = getWorld();
+  const Slider = ({ k, label }: { k: "master" | "sfx" | "ambient" | "music"; label: string }) => (
     <div className="row mb-2">
       <span className="w-20 text-[13px] font-bold">{label}</span>
       <input className="flex-1" type="range" min={0} max={1} step={0.05} value={settings[k]} onChange={(e) => set({ [k]: Number(e.target.value) })} />
@@ -555,6 +591,7 @@ export function SettingsPanel({ inMenu, onReplayIntro }: { inMenu?: boolean; onR
     <div>
       <div className="label mb-2">Audio</div>
       <Slider k="master" label="Master" />
+      <Slider k="music" label="Music" />
       <Slider k="sfx" label="Effects" />
       <Slider k="ambient" label="Ambience" />
       <div className="label mb-2 mt-3">Graphics</div>
@@ -577,13 +614,37 @@ export function SettingsPanel({ inMenu, onReplayIntro }: { inMenu?: boolean; onR
           Replay the intro
         </button>
       )}
+      {!inMenu && sess && wld && wld.factions[sess.myFaction] && (
+        <div className="mt-4">
+          <div className="label mb-2">Work priorities</div>
+          {(Object.keys(JOB_NAMES) as JobId[]).map((j) => (
+            <div key={j} className="row mb-1.5">
+              <span className="w-16 text-[13px] font-bold">{JOB_NAMES[j]}</span>
+              <input className="flex-1" type="range" min={0} max={2} step={0.1} value={wld.factions[sess.myFaction].jobPriorities[j]} onChange={(e) => sess.dispatch({ type: "setPriority", job: j, value: Number(e.target.value), player: sess.me.id })} />
+              <span className="w-8 text-right text-[12px] font-bold tabular-nums muted">{wld.factions[sess.myFaction].jobPriorities[j].toFixed(1)}</span>
+            </div>
+          ))}
+          {wld.meta.mode === "sandbox" && (
+            <label className="row text-sm font-semibold mt-2">
+              <input type="checkbox" checked={!!wld.flags.instantBuild} onChange={(e) => { wld.flags.instantBuild = e.target.checked ? 1 : 0; useGame.getState().bump(); }} /> Instant construction (sandbox)
+            </label>
+          )}
+          {sess.role === "solo" && (
+            <div className="row mt-3" style={{ gap: 8 }}>
+              <button className="btn btn-sm flex-1" onClick={() => { void sess.save(); useGame.getState().toast("World saved", "good"); }}><Icons.save style={{ width: 14, height: 14 }} /> Save now</button>
+              <button className="btn btn-sm flex-1" onClick={() => useGame.getState().setPanel("pause")}><Icons.home style={{ width: 14, height: 14 }} /> Main menu…</button>
+            </div>
+          )}
+        </div>
+      )}
       {!inMenu && (
         <div className="mt-4">
           <div className="label mb-2">Controls</div>
           <div className="text-[12px] font-semibold flex flex-col gap-1 muted">
             <div><span className="kbd">Drag</span> pan · <span className="kbd">Wheel</span> / pinch zoom · <span className="kbd">Right-drag</span> / two-finger twist rotate</div>
             <div><span className="kbd">Tap</span> select / use power · <span className="kbd">Right-click</span> send selected creature</div>
-            <div><span className="kbd">1–8</span> powers · <span className="kbd">B</span> build · <span className="kbd">C</span> chronicle · <span className="kbd">F</span> follow · <span className="kbd">H</span> home · <span className="kbd">Space</span> pause</div>
+            <div><span className="kbd">Drag</span> any creature, tree or rock to pick it up; flick to throw</div>
+            <div><span className="kbd">1–4</span> Friend / Zap / Sun / Hill · <span className="kbd">0</span> no tool · <span className="kbd">B</span> build · <span className="kbd">C</span> story · <span className="kbd">F</span> follow · <span className="kbd">H</span> home · <span className="kbd">Space</span> pause</div>
             <div><span className="kbd">WASD</span> pan · <span className="kbd">Q/E</span> rotate · <span className="kbd">Shift</span>+place keeps build mode</div>
           </div>
         </div>

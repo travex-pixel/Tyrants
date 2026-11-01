@@ -72,7 +72,7 @@ export default function Game() {
       cameraCtl.followId = null;
       const home = w.islands.find((i) => i.id === w.factions[next.myFaction]?.homeIslandId) ?? w.islands[0];
       cameraCtl.desired.set(home.spawnPoint.x, 1, home.spawnPoint.z);
-      cameraCtl.desiredDist = 34;
+      cameraCtl.desiredDist = 52;
       cameraCtl.desiredYaw = 0.6;
       cameraCtl.snap();
       st.setNet({ enabled: supabaseConfigured(), connected: next.role !== "solo", role: next.role === "solo" ? "none" : next.role, roomCode: next.roomCode, players: [], error: null });
@@ -91,7 +91,7 @@ export default function Game() {
       const st = useGame.getState();
       st.setSettings(loadSettings());
       identity.current = getIdentity();
-      audio.setVolumes({ master: st.settings.master, sfx: st.settings.sfx, ambient: st.settings.ambient });
+      audio.setVolumes({ master: st.settings.master, sfx: st.settings.sfx, ambient: st.settings.ambient, music: st.settings.music });
       const list = await listSaves();
       setSaves(list);
       const params = new URLSearchParams(window.location.search);
@@ -127,7 +127,7 @@ export default function Game() {
   const settings = useGame((s) => s.settings);
   useEffect(() => {
     storeSettings(settings);
-    audio.setVolumes({ master: settings.master, sfx: settings.sfx, ambient: settings.ambient });
+    audio.setVolumes({ master: settings.master, sfx: settings.sfx, ambient: settings.ambient, music: settings.music });
   }, [settings]);
 
   // save on leave
@@ -148,7 +148,7 @@ export default function Game() {
     st.setIntro(0);
     cameraCtl.intro = { t: 0, duration: 6.5 };
     cameraCtl.dist = 150;
-    cameraCtl.desiredDist = 26;
+    cameraCtl.desiredDist = 34;
   };
 
   // ── Actions exposed to menu/hud ──

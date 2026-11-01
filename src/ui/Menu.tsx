@@ -98,12 +98,18 @@ export function Menu({ saves, actions, identity }: { saves: SaveMeta[]; actions:
         {sub === "friends" && <Friends onBack={() => setSub("main")} actions={actions} initialCode={pendingJoin ?? ""} />}
         {sub === "challenges" && (
           <div className="flex flex-col gap-2 fade-up scroll" style={{ maxHeight: "60vh" }}>
-            {CHALLENGES.map((c) => (
-              <button key={c.id} className="btn justify-start text-left flex-col items-start gap-1" style={{ padding: "12px 14px" }} onClick={() => actions.startChallenge(c.id)}>
-                <span>{c.title}</span>
-                <span className="muted text-[12px] font-semibold">{c.tagline}</span>
-              </button>
-            ))}
+            {CHALLENGES.map((c) => {
+              const best = bestScore(c.id);
+              return (
+                <button key={c.id} className="btn justify-start text-left flex-col items-start gap-1" style={{ padding: "12px 14px" }} onClick={() => actions.startChallenge(c.id)}>
+                  <span className="row w-full">
+                    <span className="flex-1">{c.title}</span>
+                    {best !== null && <span className="chip" style={{ fontSize: 11, padding: "2px 8px" }}>Best {best}</span>}
+                  </span>
+                  <span className="muted text-[12px] font-semibold">{c.tagline}</span>
+                </button>
+              );
+            })}
             <button className="btn btn-ghost" onClick={() => setSub("main")}>
               Back
             </button>
@@ -253,4 +259,23 @@ export function timeAgo(ms: number) {
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   return `${Math.floor(s / 86400)}d ago`;
+}
+
+export function bestScore(id: string): number | null {
+  try {
+    const v = localStorage.getItem(`lt:best:${id}`);
+    return v === null ? null : Number(v);
+  } catch {
+    return null;
+  }
+}
+export function recordScore(id: string, score: number): boolean {
+  const prev = bestScore(id);
+  if (prev !== null && prev >= score) return false;
+  try {
+    localStorage.setItem(`lt:best:${id}`, String(score));
+  } catch {
+    /* ignore */
+  }
+  return true;
 }

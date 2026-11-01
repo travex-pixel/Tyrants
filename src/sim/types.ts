@@ -39,7 +39,8 @@ export type CreatureState =
   | "held"
   | "thrown"
   | "swim"
-  | "raid";
+  | "raid"
+  | "aboard";
 
 export type JobId = "gather" | "build" | "farm" | "haul" | "explore";
 
@@ -108,7 +109,65 @@ export interface Creature {
   xpBadge?: string;
   variant: number; // visual variant 0..1
   mood: "happy" | "neutral" | "grumpy" | "scared";
-  raidTarget?: { factionId: string; phase: "go" | "return" } | null;
+  raidTarget?: { factionId: string; phase: "go" | "return"; homeIslandId?: number } | null;
+  jobPref?: JobId | null;
+  jumpy?: number; // times thrown/struck by the hand: 3+ = flees the cursor
+  devout?: number; // times blessed: 3+ = follows and cheers the cursor
+}
+
+/** A tree or rock that the Overlord has uprooted: it flies, spins and shatters into resources. */
+export interface Projectile {
+  id: number;
+  kind: "tree" | "rock" | "crystal";
+  islandId: number;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  held: boolean;
+  scale: number;
+  variant: number;
+  resource: ResourceType;
+  amount: number;
+  spin: number;
+}
+
+/** A sky-skiff ferrying creatures between islands along an arc. */
+export interface Skiff {
+  id: number;
+  faction: string;
+  fromIslandId: number;
+  toIslandId: number;
+  sx: number;
+  sz: number;
+  ex: number;
+  ez: number;
+  t: number; // 0..1
+  duration: number;
+  passengers: number[];
+  purpose: "raid" | "home";
+}
+
+export interface GoalState {
+  active: string[];
+  done: string[];
+  completedAt: Record<string, number>;
+}
+
+export interface OmenOption {
+  label: string;
+  hint?: string;
+  disabled?: string; // reason the option is unavailable
+}
+export interface PendingOmen {
+  id: string;
+  title: string;
+  text: string;
+  options: OmenOption[];
+  expiresAt: number;
+  params: Record<string, number | string>;
 }
 
 export interface ResourceNode {
@@ -142,7 +201,7 @@ export interface GroundItem {
   reservedBy: number | null;
 }
 
-export type BuildingType = "campfire" | "storage" | "lumber" | "farm" | "house" | "workshop" | "totem";
+export type BuildingType = "campfire" | "storage" | "lumber" | "farm" | "house" | "workshop" | "totem" | "monument";
 
 export interface Building {
   id: number;
@@ -163,6 +222,7 @@ export interface Building {
   level: number;
   placedAt: number;
   struck?: number; // time of last lightning strike (for scorched visual)
+  hp: number; // 0..100; fire, rocks, giants and lightning wear it down; at 0 it collapses
 }
 
 export interface Task {
@@ -251,6 +311,7 @@ export interface Faction {
   difficulty: "easy" | "normal" | "hard";
   tradeOffers: TradeOffer[];
   raidCooldown: number;
+  growthTimer: number;
   stats: { gathered: number; built: number; thrown: number; struck: number; blessed: number; stolen: number };
 }
 
@@ -269,7 +330,8 @@ export interface ChronicleEntry {
 
 export interface WorldEffect {
   id: number;
-  kind: "lightning" | "bless" | "splash" | "dust" | "scorch" | "levelup" | "heart" | "anger" | "zzz" | "storm" | "sparkle" | "fall";
+  kind: "lightning" | "bless" | "splash" | "dust" | "scorch" | "levelup" | "heart" | "anger" | "zzz" | "storm" | "sparkle" | "fall" | "text" | "crash";
+  text?: string;
   x: number;
   z: number;
   y?: number;
@@ -350,8 +412,15 @@ export interface World {
   weather: { kind: "clear" | "storm"; until: number; intensity: number };
   rngState: number;
   playerFaction: string; // faction controlled by the local/human players (shared mode)
-  stats: { thrown: number; struck: number; blessed: number; spawned: number; built: number; gathered: number; discoveries: number };
+  stats: { thrown: number; struck: number; blessed: number; spawned: number; built: number; gathered: number; discoveries: number; treesThrown: number; raidsSent: number; omens: number; arrivals: number };
   flags: Record<string, boolean | number>;
+  projectiles: Record<number, Projectile>;
+  skiffs: Record<number, Skiff>;
+  goals: GoalState;
+  xp: number;
+  level: number;
+  omen: PendingOmen | null;
+  nextOmenAt: number;
 }
 
 /** Commands are the only way players (local or remote) change the world. */
@@ -376,6 +445,13 @@ export type Command =
   | { type: "trade"; offerId: number; accept: boolean; player: string }
   | { type: "gift"; toFaction: string; resource: ResourceType; amount: number; player: string }
   | { type: "cursor"; x: number; z: number; player: string; power: PowerId }
+  | { type: "grabNode"; nodeId: number; player: string }
+  | { type: "moveNode"; projectileId: number; x: number; z: number; player: string }
+  | { type: "throwNode"; projectileId: number; vx: number; vz: number; vy: number; player: string }
+  | { type: "dropNode"; projectileId: number; player: string }
+  | { type: "setJobPref"; creatureId: number; job: JobId | null; player: string }
+  | { type: "resolveOmen"; option: number; player: string }
+  | { type: "raid"; targetFaction: string; player: string }
   | { type: "joinPlayer"; player: PlayerState }
   | { type: "leavePlayer"; playerId: string }
   | { type: "setDifficulty"; difficulty: "easy" | "normal" | "hard" };

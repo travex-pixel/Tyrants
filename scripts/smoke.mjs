@@ -87,12 +87,15 @@ await step("grab and throw a creature via pointer", async () => {
   await page.waitForSelector("text=Your neighbours are getting stronger.", { timeout: 8000 });
 });
 await step("finish intro via Build", async () => {
-  await page.getByRole("button", { name: /^Build$/ }).first().click();
+  await page.locator("div.z-30 button:has-text(\"Build\")").first().click({ force: true });
   await page.waitForTimeout(600);
   await shot("05-build-menu");
 });
 await step("place a lumber camp", async () => {
-  await page.locator('div.panel button:has-text("Lumber Camp")').first().click({ force: true });
+  await page.locator('button.tile.more').first().click({ force: true });
+  await page.waitForTimeout(600);
+  await page.locator('button.tile').filter({ hasText: /^Lumber/ }).first().click({ force: true });
+  await page.waitForTimeout(400);
   await page.waitForTimeout(300);
   const spot = await page.evaluate(() => window.__lt.buildSpotScreen(1));
   await page.mouse.click(spot.x, spot.y);
@@ -102,7 +105,7 @@ await step("place a lumber camp", async () => {
   await shot("06-lumber-placed");
 });
 await step("spawn ten goblins", async () => {
-  await page.keyboard.press("2");
+  await page.keyboard.press("1");
   const spot = await page.evaluate(() => window.__lt.buildSpotScreen(0));
   for (let i = 0; i < 10; i++) {
     await page.mouse.click(spot.x + (i % 5) * 12, spot.y + Math.floor(i / 5) * 12);
@@ -114,25 +117,25 @@ await step("spawn ten goblins", async () => {
   await shot("07-goblins");
 });
 await step("lightning + bless", async () => {
-  await page.keyboard.press("3");
+  await page.keyboard.press("2");
   const c = await page.evaluate(() => window.__lt.creatureScreenPos());
   await page.mouse.click(c.x, c.y);
   await page.waitForTimeout(250);
   await shot("08-lightning");
-  await page.keyboard.press("4");
+  await page.keyboard.press("3");
   await page.mouse.click(c.x + 40, c.y);
   await page.waitForTimeout(400);
   const st = await page.evaluate(() => window.__lt.stats());
   if (st.struck < 1 || st.blessed < 1) throw new Error(`struck ${st.struck} blessed ${st.blessed}`);
 });
 await step("terraform", async () => {
-  await page.keyboard.press("5");
+  await page.keyboard.press("4");
   const spot = await page.evaluate(() => window.__lt.buildSpotScreen(2));
   await page.mouse.move(spot.x, spot.y);
   await page.mouse.down();
   await page.waitForTimeout(700);
   await page.mouse.up();
-  await page.keyboard.press("1");
+  await page.keyboard.press("0");
 });
 await step("close-up of creatures (daytime)", async () => {
   await page.evaluate(() => window.__lt.focusNearest(9));
@@ -165,15 +168,19 @@ await step("select a creature and open panels", async () => {
   await page.waitForTimeout(300);
   await shot("11-chronicle");
   await page.keyboard.press("Escape");
-  await page.click('button[title="Rival Overlords"]');
-  await page.waitForTimeout(300);
+  await page.locator('button[title^="The Book"]').click({ force: true });
+  await page.waitForTimeout(400);
+  await page.locator('button:has-text("Rivals")').first().click({ force: true });
+  await page.waitForTimeout(400);
   await shot("12-rivals");
   await page.keyboard.press("Escape");
 });
 await step("save, reload, continue", async () => {
-  await page.click('button[title="Menu (Esc)"]');
-  await page.waitForTimeout(300);
-  await page.click("text=Save now");
+  await page.locator('button[title^="The Book"]').click({ force: true });
+  await page.waitForTimeout(400);
+  await page.locator('button:has-text("Settings")').first().click({ force: true });
+  await page.waitForTimeout(400);
+  await page.locator('button:has-text("Save now")').first().click({ force: true });
   await page.waitForTimeout(600);
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForSelector("text=Continue World", { timeout: 20000 });

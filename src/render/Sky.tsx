@@ -46,7 +46,7 @@ export function Sky() {
   const { scene } = useThree();
   const quality = useGame((s) => s.settings.quality);
   const uniforms = useMemo(() => ({ top: { value: new THREE.Color("#4f9ee8") }, horizon: { value: new THREE.Color("#cfe6f7") }, bottom: { value: new THREE.Color("#8fb8d8") }, night: { value: 0 } }), []);
-  const fog = useMemo(() => new THREE.Fog("#e6ccab", 110, 420), []);
+  const fog = useMemo(() => new THREE.Fog("#e6ccab", 120, 480), []);
   useMemo(() => {
     scene.fog = fog;
   }, [scene, fog]);

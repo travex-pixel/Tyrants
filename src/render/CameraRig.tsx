@@ -66,16 +66,16 @@ export function CameraRig() {
       cameraCtl.target.y += (gy - cameraCtl.target.y) * Math.min(1, dt * 2);
       const fog = state.scene.fog as THREE.Fog | null;
       if (fog) {
-        fog.near = THREE.MathUtils.lerp(2, 110, ease);
-        fog.far = THREE.MathUtils.lerp(40, 420, ease);
+        fog.near = THREE.MathUtils.lerp(2, 120, ease);
+        fog.far = THREE.MathUtils.lerp(40, 480, ease);
       }
       if (p >= 1) cameraCtl.intro = null;
     } else {
       cameraCtl.update(dt, gy);
       const fog = state.scene.fog as THREE.Fog | null;
       if (fog) {
-        fog.near += (110 - fog.near) * Math.min(1, dt);
-        fog.far += (420 - fog.far) * Math.min(1, dt);
+        fog.near += (120 - fog.near) * Math.min(1, dt);
+        fog.far += (480 - fog.far) * Math.min(1, dt);
       }
     }
     cameraCtl.apply(cam, state.clock.elapsedTime);

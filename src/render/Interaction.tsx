@@ -23,9 +23,10 @@ interface PointerInfo { id: number; x: number; y: number; sx: number; sy: number
 export function Interaction() {
   const { gl, camera, size } = useThree();
   const pointers = useRef(new Map<number, PointerInfo>());
-  const dragging = useRef<{ creatureId: number; lastX: number; lastZ: number; vx: number; vz: number; lastT: number } | null>(null);
+  const dragging = useRef<{ creatureId: number; projectileId?: number; lastX: number; lastZ: number; vx: number; vz: number; lastT: number } | null>(null);
   const painting = useRef<{ dir: 1 | -1; last: number } | null>(null);
   const pinch = useRef<{ dist: number; angle: number } | null>(null);
+  const pendingGrab = useRef<{ creatureId: number | null; nodeId: number | null; sx: number; sy: number } | null>(null);
   const hoverTimer = useRef(0);
   const ghost = useRef<THREE.Group>(null);
   const ghostMat = useRef<THREE.MeshStandardMaterial>(null);
@@ -69,6 +70,32 @@ export function Interaction() {
       if (d < bd) {
         bd = d;
         best = c.id;
+      }
+    }
+    return best;
+  };
+
+  /** Nearest liftable tree/rock on screen. */
+  const pickNode = (sx: number, sy: number, radiusPx: number): number | null => {
+    const w = getWorld();
+    if (!w) return null;
+    let best: number | null = null;
+    let bd = radiusPx * radiusPx;
+    for (const id in w.nodes) {
+      const n = w.nodes[id];
+      if (n.kind !== "tree" && n.kind !== "rock" && n.kind !== "crystal") continue;
+      if (n.amount <= 0) continue;
+      const isl = w.islands.find((i) => i.id === n.islandId);
+      if (!isl) continue;
+      tmpV.set(n.x, heightAt(isl, n.x, n.z) + (n.kind === "tree" ? 1.6 : 0.4) * n.scale, n.z);
+      tmpV.project(camera);
+      if (tmpV.z > 1) continue;
+      const px = (tmpV.x + 1) * 0.5 * size.width;
+      const py = (1 - tmpV.y) * 0.5 * size.height;
+      const d = (px - sx) ** 2 + (py - sy) ** 2;
+      if (d < bd) {
+        bd = d;
+        best = n.id;
       }
     }
     return best;
@@ -119,7 +146,14 @@ export function Interaction() {
       return;
     }
     if (st.buildType) {
-      const r = s.dispatch({ type: "place", building: st.buildType, x: wp.x, z: wp.z, player: me, instant: w.meta.mode === "sandbox" && !!w.flags.instantBuild });
+      const instant = w.meta.mode === "sandbox" && !!w.flags.instantBuild;
+      let r = s.dispatch({ type: "place", building: st.buildType, x: wp.x, z: wp.z, player: me, instant });
+      if (!r.ok && r.reason !== "Build a campfire first" && !r.reason.startsWith("Locked") && !r.reason.startsWith("Reach") && !r.reason.startsWith("You have none")) {
+        // magnet-snap: find the nearest clear spot within 6 units instead of refusing
+        for (let rad = 1.5; rad <= 6 && !r.ok; rad += 1.5)
+          for (let a = 0; a < Math.PI * 2 && !r.ok; a += Math.PI / 6) r = s.dispatch({ type: "place", building: st.buildType, x: wp.x + Math.cos(a) * rad, z: wp.z + Math.sin(a) * rad, player: me, instant });
+        if (r.ok) st.toast("Moved it to a clear spot nearby", "info");
+      }
       if (!r.ok) {
         st.toast(r.reason, "bad");
         audio.bad();
@@ -228,18 +262,37 @@ export function Interaction() {
         painting.current = { dir: -1, last: 0 };
         return;
       }
-      if (e.button === 0 && (st.power === "grab" || st.intro >= 0) && !st.buildType) {
+      if (e.button === 0 && !st.buildType) {
         const hit = pickCreature(e.clientX, e.clientY, isTouch.current ? 46 : 34);
-        if (hit !== null) {
-          const wp = worldPoint(e.clientX, e.clientY);
-          const r = s.dispatch({ type: "grab", creatureId: hit, player: s.me.id });
-          if (r.ok) {
-            dragging.current = { creatureId: hit, lastX: wp?.x ?? 0, lastZ: wp?.z ?? 0, vx: 0, vz: 0, lastT: performance.now() };
-            st.select(hit);
-            audio.grab();
-            if (st.intro === 2) st.setIntro(3);
-          }
+        const node = hit === null && st.intro < 0 ? pickNode(e.clientX, e.clientY, isTouch.current ? 36 : 26) : null;
+        if (hit !== null || node !== null) {
+          // drag always grabs. With no tool armed, grab immediately; with a tool armed, wait for a drag
+          // so that a clean tap still applies the tool to that creature.
+          if (st.power === "grab" || st.intro >= 0) startGrab(hit, node, e.clientX, e.clientY);
+          else pendingGrab.current = { creatureId: hit, nodeId: node, sx: e.clientX, sy: e.clientY };
         }
+      }
+    };
+    const startGrab = (hit: number | null, node: number | null, cx: number, cy: number) => {
+      const st = useGame.getState();
+      const s = getSession();
+      if (!s) return;
+      const wp = worldPoint(cx, cy);
+      if (hit !== null) {
+        const r = s.dispatch({ type: "grab", creatureId: hit, player: s.me.id });
+        if (r.ok) {
+          dragging.current = { creatureId: hit, lastX: wp?.x ?? 0, lastZ: wp?.z ?? 0, vx: 0, vz: 0, lastT: performance.now() };
+          st.select(hit);
+          audio.grab();
+          if (st.intro === 2) st.setIntro(3);
+        }
+      } else if (node !== null) {
+        const r = s.dispatch({ type: "grabNode", nodeId: node, player: s.me.id });
+        if (r.ok && r.id !== undefined) {
+          dragging.current = { creatureId: -1, projectileId: r.id, lastX: wp?.x ?? 0, lastZ: wp?.z ?? 0, vx: 0, vz: 0, lastT: performance.now() };
+          audio.grab();
+          audio.chop();
+        } else if (!r.ok && r.reason !== "Nothing there") st.toast(r.reason, "bad");
       }
     };
     const onMove = (e: PointerEvent) => {
@@ -267,15 +320,21 @@ export function Interaction() {
       p.x = e.clientX;
       p.y = e.clientY;
       if (Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 7) p.moved = true;
+      if (pendingGrab.current && Math.hypot(e.clientX - pendingGrab.current.sx, e.clientY - pendingGrab.current.sy) > 8) {
+        const pg = pendingGrab.current;
+        pendingGrab.current = null;
+        startGrab(pg.creatureId, pg.nodeId, e.clientX, e.clientY);
+      }
       if (pointers.current.size === 2 && pinch.current) {
         const [a, b] = Array.from(pointers.current.values());
         const d = Math.hypot(a.x - b.x, a.y - b.y);
         const ang = Math.atan2(b.y - a.y, b.x - a.x);
         if (pinch.current.dist > 0) cameraCtl.zoom(pinch.current.dist / d);
+        // twist-to-rotate only once the fingers have clearly turned (kids trigger it by accident otherwise)
         let da = ang - pinch.current.angle;
         while (da > Math.PI) da -= Math.PI * 2;
         while (da < -Math.PI) da += Math.PI * 2;
-        cameraCtl.rotate(-da);
+        if (Math.abs(da) > 0.03) cameraCtl.rotate(-da * 0.6);
         pinch.current = { dist: d, angle: ang };
         return;
       }
@@ -292,7 +351,8 @@ export function Interaction() {
           d.lastX = wp.x;
           d.lastZ = wp.z;
           d.lastT = now;
-          s.dispatch({ type: "move", creatureId: d.creatureId, x: wp.x, z: wp.z, player: s.me.id });
+          if (d.projectileId !== undefined) s.dispatch({ type: "moveNode", projectileId: d.projectileId, x: wp.x, z: wp.z, player: s.me.id });
+          else s.dispatch({ type: "move", creatureId: d.creatureId, x: wp.x, z: wp.z, player: s.me.id });
           // edge-pan while dragging near the screen border
           const m = 40;
           const px = e.clientX < m ? -1 : e.clientX > size.width - m ? 1 : 0;
@@ -311,6 +371,7 @@ export function Interaction() {
     const onUp = (e: PointerEvent) => {
       const p = pointers.current.get(e.pointerId);
       pointers.current.delete(e.pointerId);
+      pendingGrab.current = null;
       if (pointers.current.size < 2) pinch.current = null;
       const s = getSession();
       const st = useGame.getState();
@@ -321,6 +382,14 @@ export function Interaction() {
         // held still before release? scale the window with the frame interval so slow devices still register flicks
         const frameMs = 1000 / Math.max(4, useGame.getState().fps || 60);
         const stale = performance.now() - d.lastT > Math.max(500, frameMs * 3);
+        if (d.projectileId !== undefined) {
+          if (speed > 2 && !stale) {
+            const k = Math.min(1, speed / 14);
+            s.dispatch({ type: "throwNode", projectileId: d.projectileId, vx: d.vx * 0.8, vz: d.vz * 0.8, vy: 2 + k * 6, player: s.me.id });
+            audio.throwWhoosh(0.8 + k);
+          } else s.dispatch({ type: "dropNode", projectileId: d.projectileId, player: s.me.id });
+          return;
+        }
         if (speed > 2 && !stale) {
           const k = Math.min(1, speed / 16);
           s.dispatch({ type: "throw", creatureId: d.creatureId, vx: d.vx * 0.85, vz: d.vz * 0.85, vy: 2.5 + k * 7, player: s.me.id });
@@ -349,7 +418,7 @@ export function Interaction() {
       keys.current.add(e.key);
       const st = useGame.getState();
       const s = getSession();
-      const powers: Record<string, string> = { "1": "grab", "2": "spawn", "3": "lightning", "4": "bless", "5": "terraform", "6": "giant", "7": "clone", "8": "storm" };
+      const powers: Record<string, string> = { "1": "spawn", "2": "lightning", "3": "bless", "4": "terraform", "5": "giant", "6": "clone", "7": "storm", "0": "grab" };
       if (powers[e.key] && s) {
         const pw = powers[e.key] as typeof st.power;
         if (s.world.unlockedPowers.includes(pw)) st.setPower(pw);
@@ -537,7 +606,7 @@ function LabelSync() {
   useEffect(() => {
     const c = labelLayer.container;
     if (!c) return;
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < 40; i++) {
       const d = document.createElement("div");
       d.className = "wlabel";
       d.style.display = "none";
@@ -565,6 +634,7 @@ function LabelSync() {
       if (tmpV.z > 1 || Math.abs(tmpV.x) > 1.1 || Math.abs(tmpV.y) > 1.1) return;
       const n = nodes.current[i++];
       n.style.display = "block";
+      n.style.opacity = "1";
       n.className = `wlabel ${cls}`;
       n.textContent = text;
       n.style.transform = `translate(-50%, -100%) translate(${((tmpV.x + 1) * 0.5 * size.width).toFixed(1)}px, ${((1 - tmpV.y) * 0.5 * size.height).toFixed(1)}px)`;
@@ -580,6 +650,23 @@ function LabelSync() {
       const top = (rc ? rc.y : c.y) + (c.species === "trollkin" ? 1.75 : 1.4) * c.scale + 0.2;
       put(rc ? rc.x : c.x, top, rc ? rc.z : c.z, c.name, sel ? "sel" : hov ? "hov" : "", w.factions[c.faction]?.color);
     }
+    // thought bubbles: what a creature needs, shown without opening anything
+    if (cameraCtl.dist < 40) {
+      for (const id in w.creatures) {
+        const c = w.creatures[id];
+        if (c.faction !== s.myFaction || c.state === "held" || c.state === "thrown" || c.state === "aboard") continue;
+        const rc = renderCreatures.get(c.id);
+        let text: string | null = null;
+        let color = "#fff";
+        if (c.hunger > 82) { text = "hungry!"; color = "#ffb3a0"; }
+        else if (c.mood === "scared" && c.state === "flee") { text = "!"; color = "#ffffff"; }
+        else if (c.state === "rest" && c.energy < 30) { text = "zzz"; color = "#cfe0ff"; }
+        else if (c.state === "fight") { text = "grr"; color = "#ff8f8f"; }
+        if (!text) continue;
+        const top = (rc ? rc.y : c.y) + (c.species === "trollkin" ? 1.75 : 1.4) * c.scale + 0.7;
+        put(rc ? rc.x : c.x, top, rc ? rc.z : c.z, text, "bubble", color);
+      }
+    }
     for (const id in w.players) {
       if (id === s.me.id) continue;
       const p = w.players[id];
@@ -587,7 +674,28 @@ function LabelSync() {
       const y = isl ? Math.max(heightAt(isl, p.cursorX, p.cursorZ), isl.waterLevel) : 0;
       put(p.cursorX, y + 2.2, p.cursorZ, p.name, "player", p.color);
     }
-    for (; i < nodes.current.length; i++) nodes.current[i].style.display = "none";
+    // floating combat/story text
+    for (const e of w.effects) {
+      if (e.kind !== "text" || !e.text) continue;
+      const age = (w.time - e.t) / e.ttl;
+      if (age < 0 || age > 1) continue;
+      const isl = islandAt(w, e.x, e.z);
+      const gy = isl ? Math.max(heightAt(isl, e.x, e.z), isl.waterLevel) : 0;
+      if (i >= nodes.current.length) break;
+      tmpV.set(e.x, gy + (e.y ?? 1.2) + age * 1.6, e.z).project(camera);
+      if (tmpV.z > 1) continue;
+      const n = nodes.current[i++];
+      n.style.display = "block";
+      n.className = "wlabel ftext";
+      n.textContent = e.text;
+      n.style.transform = `translate(-50%, -100%) translate(${((tmpV.x + 1) * 0.5 * size.width).toFixed(1)}px, ${((1 - tmpV.y) * 0.5 * size.height).toFixed(1)}px) scale(${(0.9 + Math.min(1, age * 6) * 0.3).toFixed(2)})`;
+      n.style.opacity = String(age < 0.7 ? 1 : 1 - (age - 0.7) / 0.3);
+      n.style.setProperty("--c", e.color ?? "#ffffff");
+    }
+    for (; i < nodes.current.length; i++) {
+      nodes.current[i].style.display = "none";
+      nodes.current[i].style.opacity = "1";
+    }
   });
   return null;
 }

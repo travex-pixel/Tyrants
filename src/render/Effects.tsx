@@ -175,6 +175,14 @@ export function Effects() {
       case "dust":
         emit(14 * mul * (e.size ?? 1), e.x, y + 0.1, e.z, { spread: 1.2 * (e.size ?? 1), up: 1.2, color: "#c8b48a", size: 0.18, grav: 0.5, drag: 0.92, max: 0.7 });
         break;
+      case "crash":
+        emit(30 * mul, e.x, y + 0.2, e.z, { spread: 3 * (e.size ?? 1), up: 3.5, color: "#a8865a", size: 0.2, grav: 4, drag: 0.94, max: 1.1 });
+        emit(16 * mul, e.x, y + 0.4, e.z, { spread: 2, up: 4, color: "#6ea444", size: 0.16, grav: 3, max: 1.3 });
+        audio.thud();
+        cameraCtl.shake = Math.max(cameraCtl.shake, 0.35);
+        break;
+      case "text":
+        break;
       case "levelup":
         pushSprite(e.x, y + 1.3, e.z, "star", 1.6, 0.7);
         emit(14 * mul, e.x, y + 0.8, e.z, { spread: 1, up: 2.5, color: "#ffd166", size: 0.1, grav: -1 });

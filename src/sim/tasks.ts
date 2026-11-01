@@ -76,7 +76,7 @@ export function generateTasks(w: World) {
     let stale = false;
     if (t.kind === "gatherNode") {
       const n = t.nodeId !== undefined ? w.nodes[t.nodeId] : undefined;
-      if (!n || n.amount <= 0 || (n.reservedBy !== null && n.reservedBy !== t.assignedTo)) stale = true;
+      if (!n || n.amount < 1 || n.kind === "stump" || (n.reservedBy !== null && n.reservedBy !== t.assignedTo)) stale = true;
     } else if (t.kind === "haulItem") {
       if (t.itemId === undefined || !w.items[t.itemId]) stale = true;
     } else if (t.kind === "deliverMaterial" || t.kind === "construct") {
@@ -164,7 +164,7 @@ function generateFactionTasks(w: World, f: Faction, islandId: number, pop: numbe
       let guard = 0;
       while (toCreate > 0 && guard++ < 6) {
         const near = lumberCamps.length > 0 && toCreate <= lumberCamps.length * 3 ? lumberCamps[toCreate % lumberCamps.length] : anchor!;
-        const node = nearestNode(w, islandId, near.x, near.z, (n) => n.resource === res && n.reservedBy === null && n.kind !== "crop" && !taskForNode(w, n.id) && !nodeUnreachable(w, n.id), 60);
+        const node = nearestNode(w, islandId, near.x, near.z, (n) => n.resource === res && n.reservedBy === null && n.kind !== "crop" && n.kind !== "stump" && n.amount >= 1 && !taskForNode(w, n.id) && !nodeUnreachable(w, n.id), 60);
         if (!node) break;
         addTask(w, { job: "gather", faction: fid, islandId, kind: "gatherNode", nodeId: node.id, resource: res, x: node.x, z: node.z, priority: res === "food" && f.stock.food < pop * 1.5 ? 1.8 : 1 });
         toCreate--;
@@ -186,11 +186,11 @@ function generateFactionTasks(w: World, f: Faction, islandId: number, pop: numbe
     const d = w.discoveries[id];
     if (d.islandId === islandId && !d.found) unfound++;
   }
-  if (unfound > 0 && pop >= 3 && w.time > 75) {
+  if (unfound > 0 && pop >= 3 && w.time > 20) {
     const open = countTasks(w, fid, (t) => t.kind === "exploreSpot" && t.islandId === islandId);
     const lastKey = `explore_${fid}_${islandId}`;
     const last = (w.flags[lastKey] as number) ?? -999;
-    if (open < 1 && w.time - last > 45) {
+    if (open < 1 && w.time - last > 25) {
       w.flags[lastKey] = w.time;
       const isl = w.islands.find((i) => i.id === islandId)!;
       const rng = worldRng(w);
@@ -242,9 +242,11 @@ export function resourceDemand(w: World, f: Faction, islandId: number, pop: numb
     for (const k in b.cost) pending[k as ResourceType] += Math.max(0, (b.cost[k as ResourceType] ?? 0) - (b.delivered[k as ResourceType] ?? 0));
   }
   const lumber = buildingsOf(w, f.id, "lumber").filter((b) => b.complete && b.islandId === islandId).length;
-  d.wood = Math.min(pop, 1 + lumber * 3 + (f.stock.wood < 20 + pending.wood ? 1 : 0) + (pending.wood > f.stock.wood ? 1 : 0));
-  d.stone = f.stock.stone < 10 + pending.stone ? 1 + (pending.stone > f.stock.stone ? 1 : 0) : 0;
-  d.food = f.stock.food < pop * 2.5 ? 1 + (f.stock.food < pop ? 1 : 0) : 0;
+  // keep roughly half the settlement visibly working even with nothing planned
+  const floor = f.stock.wood < 60 + pending.wood ? Math.ceil(pop / 2) : 1;
+  d.wood = Math.min(pop, Math.max(floor, 1 + lumber * 3 + (f.stock.wood < 40 + pending.wood ? 1 : 0) + (pending.wood > f.stock.wood ? 1 : 0)));
+  d.stone = f.stock.stone < 16 + pending.stone ? 1 + (pending.stone > f.stock.stone ? 1 : 0) : 0;
+  d.food = f.stock.food < pop * 3 ? 1 + (f.stock.food < pop ? 1 : 0) : 0;
   // Priorities from the overlord scale demand
   d.wood = Math.round(d.wood * f.jobPriorities.gather);
   d.stone = Math.round(d.stone * f.jobPriorities.gather);
@@ -269,6 +271,7 @@ export function pickTask(w: World, c: Creature): Task | null {
     const d = Math.sqrt(dist2(c.x, c.z, t.x, t.z));
     let score = t.priority * f.jobPriorities[t.job] * species.jobAffinity[t.job];
     score *= 1 / (1 + d / 18);
+    if (c.jobPref) score *= c.jobPref === t.job ? 3 : 0.35;
     if (c.traits.includes("hardworking")) score *= 1.25;
     if (c.traits.includes("curious") && t.job === "explore") score *= 2.2;
     if (c.traits.includes("greedy") && t.job === "gather") score *= 1.3;

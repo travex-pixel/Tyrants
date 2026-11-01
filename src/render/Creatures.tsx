@@ -17,6 +17,7 @@ const e = new THREE.Euler();
 const v = new THREE.Vector3();
 const m4 = new THREE.Matrix4();
 const rootM = new THREE.Matrix4();
+const hiddenM = new THREE.Matrix4().makeScale(0.0001, 0.0001, 0.0001);
 
 type PartKey = "body" | "head" | "eyeL" | "eyeR" | "pupilL" | "pupilR" | "earL" | "earR" | "cap" | "armL" | "armR" | "legL" | "legR" | "item" | "hat" | "ring" | "handL" | "handR" | "belly" | "noseL" | "noseR" | "browL" | "browR";
 
@@ -162,6 +163,14 @@ export function Creatures() {
         if (dcam < 14 && Math.random() < dt * 0.9) (c.state === "gather" ? audio.chop() : audio.build());
       }
 
+      if (c.state === "aboard") {
+        for (const key in R) {
+          const m = R[key as PartKey];
+          if (m) m.setMatrixAt(i, hiddenM);
+        }
+        i++;
+        continue;
+      }
       writeCreature(c, rc, i, t, R, selected === c.id, hovered === c.id, cam);
       i++;
     }

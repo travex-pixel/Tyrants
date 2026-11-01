@@ -1,7 +1,13 @@
 import type { Command, CommandResult, World } from "./types";
 import { SIM_DT, worldRng, saveRng, rebuildIslandNav } from "./world";
 import { updateCreature, updateItem, isNight } from "./creature";
-import { updateItemRegrowth, updateBuildings } from "./economy";
+import { updateItemRegrowth, updateBuildings, updateGrowth, updateBonfire } from "./economy";
+import { updateProjectiles } from "./projectiles";
+import { updateSkiffs } from "./skiffs";
+import { updateGoals } from "./goals";
+import { maybeSpawnOmen, expireOmen } from "./omens";
+import { addXp } from "./progression";
+import { updateDirector } from "./director";
 import { generateTasks } from "./tasks";
 import { thinkOverlord } from "./overlords";
 import { applyCommand } from "./powers";
@@ -79,6 +85,7 @@ export class Engine {
     if (newDay !== w.day) {
       w.day = newDay;
       chronicle(w, `Day ${w.day} dawns over ${w.meta.name}.`, "milestone", 1);
+      addXp(w, 25, "new day");
     }
 
     // creatures (stagger expensive decisions through decisionCooldown; movement every tick)
@@ -91,6 +98,8 @@ export class Engine {
       const it = w.items[id];
       if (it) updateItem(w, it, dt);
     }
+    updateProjectiles(w, dt, rng);
+    updateSkiffs(w, dt);
 
     // economy / buildings / regrowth (cheap, every tick)
     updateBuildings(w, dt, rng);
@@ -115,6 +124,13 @@ export class Engine {
       updateItemRegrowth(w, 1);
       checkMilestones(w);
       updateChallenge(w);
+      updateGrowth(w);
+      updateBonfire(w);
+      updateGoals(w);
+      maybeSpawnOmen(w);
+      expireOmen(w);
+      updateDirector(w);
+      if (((w.flags.bowlChain as number) ?? 0) > 0 && w.time - ((w.flags.bowlChainAt as number) ?? 0) > 3) w.flags.bowlChain = 0;
       // AI overlords, staggered by their own timers
       for (const fid in w.factions) {
         const f = w.factions[fid];
@@ -145,7 +161,7 @@ export class Engine {
 
 /** Small world-driven happenings that make the chronicle worth reading. All grounded in real state. */
 function ambientEvents(w: World, rng: ReturnType<typeof worldRng>) {
-  if (!rng.chance(0.03)) return;
+  if (!rng.chance(0.08)) return;
   const all = Object.values(w.creatures).filter((c) => c.faction === w.playerFaction);
   if (!all.length) return;
   const c = rng.pick(all);

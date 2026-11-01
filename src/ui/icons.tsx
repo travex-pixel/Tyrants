@@ -87,15 +87,17 @@ export const Icons = {
   ),
   wood: (p: SVGProps<SVGSVGElement>) => (
     <svg {...base(p)}>
-      <ellipse cx="6" cy="12" rx="3" ry="5" />
-      <path d="M6 7h12c1.7 0 3 2.2 3 5s-1.3 5-3 5H6" />
-      <circle cx="6" cy="12" r="1" />
+      <path d="M8 6h10c2 0 3.5 2.7 3.5 6S20 18 18 18H8" />
+      <ellipse cx="8" cy="12" rx="4" ry="6" fill="currentColor" fillOpacity="0.25" />
+      <ellipse cx="8" cy="12" rx="2" ry="3" />
+      <path d="M12 8.5h5M12 15.5h5" strokeOpacity="0.6" />
     </svg>
   ),
   stone: (p: SVGProps<SVGSVGElement>) => (
     <svg {...base(p)}>
-      <path d="M7 19l-4-6 4-7h9l5 6-3 7z" />
-      <path d="M7 6l5 7 7-1M12 13l-2 6" />
+      <path d="M3 19l2.5-5 4-1.5 3 3L11 19z" fill="currentColor" fillOpacity="0.25" />
+      <path d="M11 19l2-5.5 5-1.5 3 4-1.5 3z" fill="currentColor" fillOpacity="0.15" />
+      <path d="M8 12.5L9 8l5-2 3.5 3-1.5 4.5" />
     </svg>
   ),
   food: (p: SVGProps<SVGSVGElement>) => (
@@ -106,8 +108,15 @@ export const Icons = {
   ),
   essence: (p: SVGProps<SVGSVGElement>) => (
     <svg {...base(p)}>
-      <path d="M12 2l5 7-5 13-5-13z" />
-      <path d="M7 9h10" />
+      <path d="M12 3l5 6-5 12-5-12z" fill="currentColor" fillOpacity="0.25" />
+      <path d="M7 9h10M12 3v18M9 9l3 12 3-12" strokeOpacity="0.7" />
+    </svg>
+  ),
+  scroll: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <path d="M6 4h11a3 3 0 0 1 3 3v1H9" />
+      <path d="M6 4a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h11a3 3 0 0 0 3-3v-1H9" />
+      <path d="M9 8v12M12 11h5M12 14h5" />
     </svg>
   ),
   pop: (p: SVGProps<SVGSVGElement>) => (
@@ -203,6 +212,112 @@ export const Icons = {
     <svg {...base(p)}>
       <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
       <path d="M17 21v-8H7v8M7 3v5h8" />
+    </svg>
+  ),
+  mallet: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <rect x="11" y="3" width="10" height="7" rx="2" transform="rotate(45 16 6.5)" fill="currentColor" fillOpacity="0.3" />
+      <path d="M12.5 10.5L4 19" strokeWidth="3" />
+      <path d="M3.5 5.5a6 6 0 0 1 3-3M21.5 18.5a6 6 0 0 1-3 3" strokeOpacity="0.6" />
+    </svg>
+  ),
+  boltFill: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <path d="M13.5 2L5 13h6l-1.5 9L19 11h-6z" fill="currentColor" fillOpacity="0.35" />
+    </svg>
+  ),
+  sunFace: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <circle cx="12" cy="12" r="5" fill="currentColor" fillOpacity="0.3" />
+      <path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" />
+      <path d="M10 11h.01M14 11h.01" strokeWidth="2.4" />
+      <path d="M9.8 13.6c1.2 1.3 3.2 1.3 4.4 0" />
+    </svg>
+  ),
+  hills: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <path d="M2 19c3-6 6-9 9-9s6 3 9 9" fill="currentColor" fillOpacity="0.25" />
+      <path d="M12 19c2-4 4-6 6-6s4 2 4 6" fill="currentColor" fillOpacity="0.2" />
+      <path d="M11 3v5M8.5 5.5L11 3l2.5 2.5" />
+    </svg>
+  ),
+  shovel: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <path d="M14 4l6 6" />
+      <path d="M3 21c0-4 2-6 5-8l3-3 3 3-3 3c-2 3-4 5-8 5z" fill="currentColor" fillOpacity="0.3" />
+      <path d="M11 10l6-6" />
+    </svg>
+  ),
+  pouch: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <path d="M7 9c-3 3-4 6-3 9a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3c1-3 0-6-3-9z" fill="currentColor" fillOpacity="0.25" />
+      <path d="M8 9c1-2 7-2 8 0M9 6l1.5-3 1.5 2 1.5-2L15 6" />
+      <path d="M12 12l.8 2.2L15 15l-2.2.8L12 18l-.8-2.2L9 15l2.2-.8z" fill="currentColor" />
+    </svg>
+  ),
+  campfire: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <path d="M12 3c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 0-7z" fill="currentColor" fillOpacity="0.35" />
+      <path d="M4 20l16-4M4 16l16 4" />
+    </svg>
+  ),
+  house: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <path d="M3 11l9-7 9 7" />
+      <path d="M5 10v10h14V10" fill="currentColor" fillOpacity="0.25" />
+      <path d="M10 20v-5a2 2 0 0 1 4 0v5" />
+    </svg>
+  ),
+  sprout: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <path d="M3 20h18" />
+      <path d="M7 20v-5M12 20v-8M17 20v-5" />
+      <path d="M12 12c-4 0-5-3-5-5 3 0 5 2 5 5zM12 12c4 0 5-3 5-5-3 0-5 2-5 5z" fill="currentColor" fillOpacity="0.3" />
+    </svg>
+  ),
+  barrel: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <path d="M6 4h12c1 3 1 13 0 16H6c-1-3-1-13 0-16z" fill="currentColor" fillOpacity="0.25" />
+      <path d="M5 9h14M5 15h14M12 4v16" strokeOpacity="0.7" />
+    </svg>
+  ),
+  axe: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <path d="M14 3c3 0 6 2 7 5-3 0-5 1-7 3l-3-3c1-2 2-4 3-5z" fill="currentColor" fillOpacity="0.3" />
+      <path d="M11 8L3 16l2 2 8-8" />
+    </svg>
+  ),
+  anvil: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <path d="M3 8h13a5 5 0 0 1 5 5h-9l-2 2v3h4v2H7v-2h4v-3l-3-2H3z" fill="currentColor" fillOpacity="0.3" />
+    </svg>
+  ),
+  totem: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <rect x="8" y="3" width="8" height="18" rx="1" fill="currentColor" fillOpacity="0.25" />
+      <path d="M8 9h8M8 15h8M4 6l4 2M20 6l-4 2" />
+      <path d="M10.5 6.5h.01M13.5 6.5h.01M10.5 12h.01M13.5 12h.01" strokeWidth="2.2" />
+    </svg>
+  ),
+  obelisk: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <path d="M10 20L11 5l1-3 1 3 1 15z" fill="currentColor" fillOpacity="0.3" />
+      <path d="M5 21h14M7 20h10" />
+      <path d="M12 2l1 1-1 1-1-1z" fill="currentColor" />
+    </svg>
+  ),
+  book2: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <path d="M5 3h13a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5z" fill="currentColor" fillOpacity="0.25" />
+      <path d="M5 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2M8 3v18" />
+      <path d="M14 3v8l2-1.5 2 1.5V3" fill="currentColor" fillOpacity="0.5" />
+    </svg>
+  ),
+  twin: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <circle cx="8" cy="9" r="3.5" fill="currentColor" fillOpacity="0.3" />
+      <circle cx="16" cy="9" r="3.5" fill="currentColor" fillOpacity="0.3" />
+      <path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0" />
     </svg>
   ),
 };

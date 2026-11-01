@@ -283,6 +283,34 @@ const BuildingMesh = memo(function BuildingMesh({ info }: { info: BInfo }) {
             </mesh>
           </>
         );
+      case "monument":
+        return (
+          <>
+            <mesh position={[0, 0.3, 0]} castShadow={shadows} receiveShadow>
+              <cylinderGeometry args={[2.4, 2.7, 0.6, 8]} />
+              <meshStandardMaterial color={stone} roughness={1} {...matProps} flatShading />
+            </mesh>
+            <mesh position={[0, 0.85, 0]} castShadow={shadows}>
+              <cylinderGeometry args={[1.5, 1.8, 0.5, 8]} />
+              <meshStandardMaterial color="#b9a78d" roughness={1} {...matProps} flatShading />
+            </mesh>
+            <mesh position={[0, 3.2, 0]} castShadow={shadows}>
+              <cylinderGeometry args={[0.35, 0.8, 4.2, 6]} />
+              <meshStandardMaterial color="#d8cbb0" roughness={0.9} {...matProps} flatShading />
+            </mesh>
+            <mesh ref={flame} position={[0, 5.9, 0]}>
+              <octahedronGeometry args={[0.6, 0]} />
+              <meshStandardMaterial color="#ffd166" emissive="#ffb347" emissiveIntensity={info.stage === 4 ? 2.4 : 0.2} {...matProps} />
+            </mesh>
+            {[0, 1, 2, 3].map((k) => (
+              <mesh key={k} position={[Math.cos(k * 1.57) * 2.1, 1.3, Math.sin(k * 1.57) * 2.1]} castShadow={shadows}>
+                <boxGeometry args={[0.35, 1.4, 0.35]} />
+                <meshStandardMaterial color="#b9a78d" roughness={1} {...matProps} />
+              </mesh>
+            ))}
+            {info.stage === 4 && <pointLight ref={light} position={[0, 6, 0]} color="#ffd166" intensity={3} distance={14} decay={2} />}
+          </>
+        );
       case "totem":
         return (
           <>

@@ -2,13 +2,16 @@
  * Procedural audio: no asset files required. Every sound is synthesised with WebAudio so the
  * game ships with a complete soundscape; drop-in sample support can replace any `play*` method.
  */
+import { MusicEngine, type MusicMood } from "./music";
+
 class AudioEngine {
+  readonly music = new MusicEngine();
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private sfx: GainNode | null = null;
   private amb: GainNode | null = null;
   private ambientStarted = false;
-  private volumes = { master: 0.8, sfx: 0.9, ambient: 0.6 };
+  private volumes = { master: 0.8, sfx: 0.9, ambient: 0.6, music: 0.5 };
   private lastPlayed: Record<string, number> = {};
   private stormGain: GainNode | null = null;
 
@@ -35,10 +38,18 @@ class AudioEngine {
 
   unlock() {
     const ctx = this.ensure();
-    if (ctx && !this.ambientStarted) this.startAmbient();
+    if (ctx && !this.ambientStarted) {
+      this.startAmbient();
+      this.music.attach(ctx, this.master!);
+      this.music.setVolume(this.volumes.music);
+      this.music.start();
+    }
+  }
+  setMusicMood(m: MusicMood) {
+    this.music.setMood(m);
   }
 
-  setVolumes(v: Partial<{ master: number; sfx: number; ambient: number }>) {
+  setVolumes(v: Partial<{ master: number; sfx: number; ambient: number; music: number }>) {
     this.volumes = { ...this.volumes, ...v };
     this.applyVolumes();
   }
@@ -47,6 +58,7 @@ class AudioEngine {
     this.master!.gain.value = this.volumes.master;
     this.sfx!.gain.value = this.volumes.sfx;
     this.amb!.gain.value = this.volumes.ambient * 0.5;
+    this.music.setVolume(this.volumes.music);
   }
 
   private noiseBuffer(seconds = 2): AudioBuffer {

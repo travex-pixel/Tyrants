@@ -5,6 +5,7 @@ import { getSession, getWorld } from "@/src/render/context";
 import { cameraCtl } from "@/src/render/cameraCtl";
 import { CHALLENGES, finishChallenge } from "@/src/sim/challenges";
 import { Icons } from "./icons";
+import { bestScore, recordScore } from "./Menu";
 
 const LINES = ["An entire world. Yours to ruin.", "Look closely. They're alive, and they have opinions.", "Go on. Pick someone up.", "Now throw them. Somewhere wet, ideally.", "Your neighbours are getting stronger."];
 
@@ -25,7 +26,7 @@ export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
         const w = getWorld();
         if (w) {
           const c = Object.values(w.creatures).find((x) => x.faction === w.playerFaction);
-          if (c) cameraCtl.focus(c.x, c.z, 16);
+          if (c) cameraCtl.focus(c.x, c.z, 22);
         }
         setIntro(1);
       }, 6500);
@@ -36,9 +37,7 @@ export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
   }, [stage, setIntro]);
 
   useEffect(() => {
-    if (stage === 4) {
-      cameraCtl.zoom(2.2);
-    }
+    if (stage === 4) cameraCtl.zoom(1.6);
   }, [stage]);
 
   if (stage < 0) return null;
@@ -71,7 +70,7 @@ export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
               useGame.getState().setPanel("build");
             }}
           >
-            <Icons.hammer style={{ width: 18, height: 18 }} /> Build
+            <Icons.mallet style={{ width: 18, height: 18 }} /> Build
           </button>
           <button
             className="btn"
@@ -139,13 +138,16 @@ export function ChallengeHud({ onLeave, onRetry }: { onLeave: () => void; onRetr
   const elapsed = w.time - ch.startedAt;
   const left = ch.duration > 0 ? Math.max(0, ch.duration - elapsed) : null;
   if (ch.finished) {
+    const isBest = !w.flags.scoreRecorded ? (w.flags.scoreRecorded = 1, recordScore(ch.id, ch.score)) : w.flags.wasBest;
+    if (isBest) w.flags.wasBest = 1;
+    const best = bestScore(ch.id);
     return (
       <div className="absolute inset-0 z-40 flex items-center justify-center p-4 bg-[rgba(30,15,5,0.45)] backdrop-blur-sm">
         <div className="panel p-6 w-full max-w-md text-center pop">
           <div className="label">{ch.result === "won" ? "Victory" : ch.result === "lost" ? "Defeat" : "Time's up"}</div>
           <div className="title text-3xl mt-1">{def.title}</div>
           <div className="mt-3 text-lg font-bold">
-            {def.scoreLabel}: {ch.score}
+            {def.scoreLabel}: {ch.score} {isBest ? <span className="chip" style={{ color: "#7a4a10", fontSize: 12 }}>New best!</span> : best !== null ? <span className="muted text-sm">(best {best})</span> : null}
           </div>
           <div className="muted mt-1 text-sm font-semibold">{ch.summary}</div>
           <div className="flex gap-2 mt-5">

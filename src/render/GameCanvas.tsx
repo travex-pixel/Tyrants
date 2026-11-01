@@ -9,6 +9,10 @@ import { Vegetation } from "./Vegetation";
 import { Creatures } from "./Creatures";
 import { Buildings, Items, Discoveries } from "./Buildings";
 import { Effects } from "./Effects";
+import { Projectiles } from "./Projectiles";
+import { Skiffs } from "./Skiffs";
+import { audio } from "@/src/audio/audio";
+import { isNight } from "@/src/sim/creature";
 import { Interaction } from "./Interaction";
 import { CameraRig } from "./CameraRig";
 import { getSession } from "./context";
@@ -35,6 +39,11 @@ function Ticker() {
       useGame.getState().setFps(Math.round(frames.current / fpsT.current));
       frames.current = 0;
       fpsT.current = 0;
+      if (s) {
+        const w = s.world;
+        const bonfire = (w.flags[`bonfireUntil_${s.myFaction}`] as number | undefined) ?? 0;
+        audio.setMusicMood(useGame.getState().screen === "menu" ? "menu" : w.weather.kind === "storm" ? "storm" : w.time < bonfire ? "bonfire" : isNight(w) ? "night" : "day");
+      }
     }
   });
   return null;
@@ -61,7 +70,7 @@ export function GameCanvas() {
       <Canvas
         shadows={quality !== "low"}
         dpr={quality === "high" ? [1, 1.75] : quality === "medium" ? [1, 1.25] : 1}
-        camera={{ fov: 42, near: 0.5, far: 1200, position: [60, 60, 60] }}
+        camera={{ fov: 50, near: 0.5, far: 1200, position: [60, 60, 60] }}
         gl={{ antialias: quality !== "low", powerPreference: "high-performance", stencil: false }}
         frameloop="always"
         style={{ touchAction: "none" }}
@@ -77,6 +86,8 @@ export function GameCanvas() {
         <Creatures />
         <Buildings />
         <Items />
+        <Projectiles />
+        <Skiffs />
         <Discoveries />
         <Effects />
         <Interaction />

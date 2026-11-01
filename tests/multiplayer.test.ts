@@ -98,15 +98,15 @@ describe("raids", () => {
     w.factions.p1.stock.food = 40;
     w.time = 100;
     const rng = worldRng(w);
-    for (let i = 0; i < 40 && !Object.values(w.creatures).some((c) => c.state === "raid"); i++) {
+    for (let i = 0; i < 40 && !Object.values(w.creatures).some((c) => c.state === "raid" || c.state === "aboard"); i++) {
       w.time += 60;
       h.raidCooldown = -1;
       thinkOverlord(w, h, rng);
     }
     saveRng(w, rng);
-    const raider = Object.values(w.creatures).find((c) => c.state === "raid");
+    const raider = Object.values(w.creatures).find((c) => c.state === "aboard" || c.state === "raid");
     expect(raider).toBeDefined();
-    expect(w.chronicle.some((c) => c.text.includes("raider"))).toBe(true);
+    expect(w.chronicle.some((c) => c.text.includes("raiding skiff"))).toBe(true);
     for (let i = 0; i < 1200 && w.creatures[raider!.id]; i++) e.step();
     // the raid resolved: either food was stolen or the raider was stopped
     expect(w.factions.p1.stock.food <= 40).toBe(true);

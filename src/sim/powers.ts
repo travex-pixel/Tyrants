@@ -1,12 +1,18 @@
 import type { Command, CommandResult, Creature, World, SpeciesId } from "./types";
 import { RNG, clamp, dist2 } from "./rng";
 import { heightAt, isWaterAt, terraform as terraformIsland, isBuildable, cellOf, findFlatSpot } from "./terrain";
+import { SIM_DT as _dt } from "./world";
 import { islandAt, islandById, creaturesNear, nearestNode, canAfford, buildingsOf } from "./query";
 import { chronicle, effect } from "./chronicle";
 import { interrupt, remember, relation, completeBuilding, goTo } from "./creature";
 import { spawnCreature, placeBuildingRaw, markBuildingCells, rebuildIslandNav, makeFaction } from "./world";
 import { BUILDINGS, SPECIES } from "./species";
-import { unlockAchievement } from "./progression";
+import { unlockAchievement, addXp } from "./progression";
+import { grabNode } from "./projectiles";
+import { boardSkiff } from "./skiffs";
+import { addMayhem, damageBuilding } from "./mayhem";
+import { resolveOmen } from "./omens";
+import { findFlatSpot as _ffs } from "./terrain";
 import { removeTask } from "./tasks";
 import { noteAIEvent } from "./overlords";
 
@@ -38,6 +44,8 @@ export function applyCommand(w: World, cmd: Command, rng: RNG): CommandResult {
       c.vy = 0;
       effect(w, "sparkle", cmd.x, cmd.z, { ttl: 1.2, color: SPECIES[cmd.species].color });
       w.flags.playerSpawned = 1;
+      w.flags.playerSpawns = ((w.flags.playerSpawns as number) ?? 0) + 1;
+      addXp(w, 5, "spawn");
       unlockAchievement(w, "first_spawn");
       if (isl.ownerFaction && isl.ownerFaction !== faction && w.factions[isl.ownerFaction]?.isAI) {
         noteAIEvent(w, isl.ownerFaction, "trespass", -3, `${playerName(w, cmd.player)} spawned creatures on my island.`);
@@ -93,8 +101,17 @@ export function applyCommand(w: World, cmd: Command, rng: RNG): CommandResult {
       c.stateTime = 0;
       c.happiness = clamp(c.happiness - 8, 0, 100);
       remember(c, "thrown", 1, undefined, undefined, undefined, w.time);
+      c.jumpy = (c.jumpy ?? 0) + 1;
+      if (c.jumpy === 3) chronicle(w, `${c.name} has been thrown three times and now flinches whenever the hand comes near.`, "story", 2, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
       w.stats.thrown++;
       w.flags.lastThrower = 1;
+      const lastThrow = (w.flags.lastThrowAt as number) ?? -100;
+      const streak = w.time - lastThrow < 6 ? ((w.flags.yeetStreak as number) ?? 1) + 1 : 1;
+      w.flags.yeetStreak = streak;
+      w.flags.lastThrowAt = w.time;
+      addXp(w, 2 + Math.min(10, streak), "throw");
+      effect(w, "text", c.x, c.z, { text: streak >= 3 ? `×${streak} YEET!` : sp > 10 ? "YEET!" : "yeet", color: streak >= 3 ? "#ff8fab" : "#ffffff", ttl: 1.3, y: 1.8 });
+      if (streak === 5) chronicle(w, `${playerName(w, cmd.player)} threw five creatures in quick succession. The survivors are forming a committee.`, "power", 2, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
       const f = w.factions[c.faction];
       if (f) f.stats.thrown++;
       unlockAchievement(w, "first_throw");
@@ -107,6 +124,7 @@ export function applyCommand(w: World, cmd: Command, rng: RNG): CommandResult {
       effect(w, "lightning", cmd.x, cmd.z, { ttl: 1.2 });
       effect(w, "scorch", cmd.x, cmd.z, { ttl: 40 });
       w.stats.struck++;
+      if (cmd.player !== "storm" && cmd.player !== "disaster") addXp(w, 3, "lightning");
       const victims = isl ? creaturesNear(w, cmd.x, cmd.z, 2.2, isl.id) : [];
       for (const c of victims) {
         if (c.state === "held") continue;
@@ -114,6 +132,7 @@ export function applyCommand(w: World, cmd: Command, rng: RNG): CommandResult {
         c.health = clamp(c.health - 35, 1, 100);
         c.happiness = clamp(c.happiness - 20, 0, 100);
         remember(c, "struck", 1, undefined, cmd.x, cmd.z, w.time);
+        c.jumpy = (c.jumpy ?? 0) + 1;
         const d = Math.hypot(c.x - cmd.x, c.z - cmd.z) || 0.3;
         c.vx = ((c.x - cmd.x) / d) * 5;
         c.vz = ((c.z - cmd.z) / d) * 5;
@@ -155,18 +174,22 @@ export function applyCommand(w: World, cmd: Command, rng: RNG): CommandResult {
             b.workDone = Math.max(0, b.workDone - b.work * 0.3);
             b.progress = b.workDone / b.work;
           }
+          damageBuilding(w, b, 25, "lightning", rng);
           const f = w.factions[b.faction];
           if (f && f.isAI) noteAIEvent(w, f.id, "struck_building", -15, `${playerName(w, cmd.player)} struck my ${BUILDINGS[b.type].name} with lightning.`);
           if (f && !f.isAI && rng.chance(0.5)) chronicle(w, `Lightning scorched a ${BUILDINGS[b.type].name}. The builders are not amused.`, "power", 1, { faction: b.faction, x: b.x, z: b.z, islandId: b.islandId });
         }
       }
       if (victims.length >= 3) chronicle(w, `${playerName(w, cmd.player)} struck ${victims.length} creatures with a single bolt.`, "power", 2, { x: cmd.x, z: cmd.z, islandId: isl?.id });
+      if (victims.length) addMayhem(w, victims.length, cmd.x, cmd.z);
+      effect(w, "text", cmd.x, cmd.z, { text: "ZAP!", color: "#9ecbff", ttl: 1.1, y: 1.6 });
       return { ok: true };
     }
     case "bless": {
       const isl = islandAt(w, cmd.x, cmd.z);
       effect(w, "bless", cmd.x, cmd.z, { ttl: 2.2, size: 3.5 });
       w.stats.blessed++;
+      addXp(w, 4, "bless");
       const near = isl ? creaturesNear(w, cmd.x, cmd.z, 3.5, isl.id) : [];
       for (const c of near) {
         c.blessedUntil = w.time + 45;
@@ -174,6 +197,9 @@ export function applyCommand(w: World, cmd: Command, rng: RNG): CommandResult {
         c.energy = clamp(c.energy + 30, 0, 100);
         c.health = clamp(c.health + 30, 0, 100);
         remember(c, "blessed", 1, undefined, undefined, undefined, w.time);
+        c.devout = (c.devout ?? 0) + 1;
+        c.jumpy = Math.max(0, (c.jumpy ?? 0) - 1);
+        if (c.devout === 3) chronicle(w, `${c.name} has been blessed three times and now follows the hand around like a devoted puppy.`, "story", 2, { faction: c.faction, x: c.x, z: c.z, islandId: c.islandId });
         const f = w.factions[c.faction];
         if (f) {
           f.stats.blessed++;
@@ -186,11 +212,27 @@ export function applyCommand(w: World, cmd: Command, rng: RNG): CommandResult {
     case "terraform": {
       const isl = islandAt(w, cmd.x, cmd.z);
       if (!isl) return { ok: false, reason: "Not over land" };
-      // protect buildings from being buried
-      if (buildingsNear(w, cmd.x, cmd.z, cmd.radius + 1.5, isl.id).length > 0) return { ok: false, reason: "Too close to a building" };
       const ok = terraformIsland(isl, cmd.x, cmd.z, cmd.radius, cmd.dir * 0.28);
       if (!ok) return { ok: false, reason: "Can't shape that" };
       rebuildIslandNav(w, isl);
+      // the land itself is a weapon: rising ground launches, sinking ground dunks; buildings crack
+      for (const c of creaturesNear(w, cmd.x, cmd.z, cmd.radius * 0.8, isl.id)) {
+        if (c.state === "held" || c.state === "thrown" || c.state === "aboard") continue;
+        if (cmd.dir > 0) {
+          interrupt(w, c, rng, false);
+          c.vx = rng.range(-1.5, 1.5);
+          c.vz = rng.range(-1.5, 1.5);
+          c.vy = 6;
+          c.y += 0.1;
+          c.state = "thrown";
+          c.stateTime = 0;
+          remember(c, "threat", 0.5, undefined, cmd.x, cmd.z, w.time);
+        } else {
+          c.y = Math.max(heightAt(isl, c.x, c.z), isl.waterLevel);
+          remember(c, "threat", 0.4, undefined, cmd.x, cmd.z, w.time);
+        }
+      }
+      for (const b of buildingsNear(w, cmd.x, cmd.z, cmd.radius + 0.8, isl.id)) damageBuilding(w, b, 6, "the ground moved under it by the hand", rng);
       if (isl.ownerFaction && w.factions[isl.ownerFaction]?.isAI && rng.chance(0.1)) noteAIEvent(w, isl.ownerFaction, "terraform", -2, `${playerName(w, cmd.player)} reshaped my island.`);
       // creatures standing on it get nudged (they re-path naturally)
       return { ok: true };
@@ -236,7 +278,7 @@ export function applyCommand(w: World, cmd: Command, rng: RNG): CommandResult {
       const faction = cmd.faction ?? factionOfPlayer(w, cmd.player);
       const f = w.factions[faction];
       if (!f) return { ok: false, reason: "No faction" };
-      if (def.unlock && faction === pf && !w.achievements[def.unlock]?.unlockedAt) return { ok: false, reason: `Locked: ${w.achievements[def.unlock]?.title}` };
+      if (def.unlock && faction === pf && !w.achievements[def.unlock]?.unlockedAt) return { ok: false, reason: def.type === "monument" ? "Reach Overlord level 6 to begin the Sky Monument" : `Locked: ${w.achievements[def.unlock]?.title}` };
       if (!isBuildable(isl, cmd.x, cmd.z, def.footprint)) return { ok: false, reason: "Ground isn't flat or clear enough" };
       if (buildingsNear(w, cmd.x, cmd.z, def.footprint + 1.6, isl.id).length > 0) return { ok: false, reason: "Too close to another building" };
       const nearbyNode = nearestNode(w, isl.id, cmd.x, cmd.z, (n) => n.kind !== "berry" && n.kind !== "stump", def.footprint + 0.6);
@@ -353,6 +395,80 @@ export function applyCommand(w: World, cmd: Command, rng: RNG): CommandResult {
       to.stock[cmd.resource] += amt;
       noteAIEvent(w, to.id, "gift", 4 + amt * 0.5, `They gifted me ${amt} ${cmd.resource}.`);
       chronicle(w, `You gifted ${amt} ${cmd.resource} to ${to.name}.`, "rival", 1, { faction: to.id });
+      return { ok: true };
+    }
+    case "grabNode": {
+      const n = w.nodes[cmd.nodeId];
+      if (!n) return { ok: false, reason: "Nothing there" };
+      if (n.kind === "berry" || n.kind === "stump" || n.kind === "crop") return { ok: false, reason: "Too small to lift" };
+      const p = grabNode(w, n, rng);
+      if (!p) return { ok: false, reason: "Can't lift that" };
+      const isl = islandById(w, n.islandId);
+      if (isl.ownerFaction && w.factions[isl.ownerFaction]?.persona === "wildkeeper") noteAIEvent(w, isl.ownerFaction, "uprooted", -6, `${playerName(w, cmd.player)} uprooted one of my trees.`);
+      return { ok: true, id: p.id };
+    }
+    case "moveNode": {
+      const p = w.projectiles[cmd.projectileId];
+      if (!p || !p.held) return { ok: false, reason: "Not held" };
+      p.x = cmd.x;
+      p.z = cmd.z;
+      const isl = islandAt(w, cmd.x, cmd.z);
+      if (isl) p.islandId = isl.id;
+      return { ok: true };
+    }
+    case "throwNode":
+    case "dropNode": {
+      const p = w.projectiles[cmd.projectileId];
+      if (!p || !p.held) return { ok: false, reason: "Not held" };
+      p.held = false;
+      if (cmd.type === "throwNode") {
+        const maxV = 14;
+        const spd = Math.hypot(cmd.vx, cmd.vz);
+        const k = spd > maxV ? maxV / spd : 1;
+        p.vx = cmd.vx * k;
+        p.vz = cmd.vz * k;
+        p.vy = clamp(cmd.vy, 1, 9);
+      } else {
+        p.vx = p.vz = 0;
+        p.vy = 0;
+      }
+      return { ok: true };
+    }
+    case "setJobPref": {
+      const c = w.creatures[cmd.creatureId];
+      if (!c) return { ok: false, reason: "No such creature" };
+      c.jobPref = cmd.job;
+      if (c.taskId !== null) {
+        const t = w.tasks[c.taskId];
+        if (t && cmd.job && t.job !== cmd.job && c.state !== "carry") interrupt(w, c, rng, false), (c.state = "idle"), (c.decisionCooldown = 0.2);
+      }
+      return { ok: true };
+    }
+    case "resolveOmen": {
+      const r = resolveOmen(w, cmd.option);
+      return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+    }
+    case "raid": {
+      const target = w.factions[cmd.targetFaction];
+      const me = w.factions[factionOfPlayer(w, cmd.player)];
+      if (!target || !me || target.id === me.id) return { ok: false, reason: "No such rival" };
+      if (w.meta.mode === "sandbox") return { ok: false, reason: "No rivals to raid in the sandbox" };
+      const cd = (w.flags[`raidCd_${me.id}`] as number) ?? -999;
+      if (w.time - cd < 120) return { ok: false, reason: `Your raiders need ${Math.ceil(120 - (w.time - cd))}s to recover` };
+      const pool = Object.values(w.creatures).filter((c) => c.faction === me.id && c.state !== "held" && c.state !== "thrown" && c.state !== "raid" && c.health > 40);
+      pool.sort((a, b) => (b.traits.includes("brave") ? 2 : 0) + (b.species === "goblin" ? 1 : 0) - ((a.traits.includes("brave") ? 2 : 0) + (a.species === "goblin" ? 1 : 0)));
+      const party = pool.slice(0, 2);
+      if (party.length === 0) return { ok: false, reason: "Nobody is fit to raid" };
+      for (const c of party) c.raidTarget = { factionId: target.id, phase: "go", homeIslandId: c.islandId };
+      const skiff = boardSkiff(w, party, target.homeIslandId, "raid", rng);
+      if (!skiff) return { ok: false, reason: "The skiff wouldn't launch" };
+      w.flags[`raidCd_${me.id}`] = w.time;
+      w.stats.raidsSent++;
+      unlockAchievement(w, "raid_sent");
+      addXp(w, 20, "raid");
+      noteAIEvent(w, target.id, "raided", -18, `${playerName(w, cmd.player)} sent raiders to rob my stores.`);
+      target.raidCooldown = Math.min(target.raidCooldown, 60); // they will want revenge
+      chronicle(w, `${party.map((c) => c.name).join(" and ")} set off by sky-skiff to raid ${target.name}'s stores.`, "rival", 3, { faction: me.id, x: skiff.sx, z: skiff.sz, islandId: skiff.fromIslandId });
       return { ok: true };
     }
     case "cursor": {

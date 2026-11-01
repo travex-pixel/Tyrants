@@ -91,11 +91,12 @@ export interface Settings {
   master: number;
   sfx: number;
   ambient: number;
+  music: number;
   quality: "low" | "medium" | "high";
   showNames: boolean;
   invertDrag: boolean;
 }
-export const DEFAULT_SETTINGS: Settings = { master: 0.8, sfx: 0.9, ambient: 0.6, quality: "high", showNames: true, invertDrag: false };
+export const DEFAULT_SETTINGS: Settings = { master: 0.8, sfx: 0.9, ambient: 0.6, music: 0.5, quality: "high", showNames: true, invertDrag: false };
 
 export function loadSettings(): Settings {
   if (typeof localStorage === "undefined") return DEFAULT_SETTINGS;

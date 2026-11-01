@@ -6,6 +6,7 @@ import { findFlatSpot, isBuildable } from "./terrain";
 import { chronicle, effect } from "./chronicle";
 import { placeBuildingRaw, spawnCreature } from "./world";
 import { buildingsNear } from "./powers";
+import { boardSkiff } from "./skiffs";
 
 /** Personality weights used by the strategic layer. */
 const PERSONA: Record<OverlordPersona, {
@@ -123,11 +124,10 @@ export function thinkOverlord(w: World, f: Faction, rng: RNG) {
 
   // ── Population growth: real food surplus → a new creature arrives (bounded by housing + campfire) ──
   const cap = 4 + housingCapacity(w, f.id) + complete.filter((b) => b.type === "campfire").length * 2;
-  const growthTimer = ((f as unknown as { growthTimer?: number }).growthTimer ?? 0) + (w.time - ((f as unknown as { lastThink?: number }).lastThink ?? w.time));
+  f.growthTimer += w.time - ((f as unknown as { lastThink?: number }).lastThink ?? w.time);
   (f as unknown as { lastThink: number }).lastThink = w.time;
-  (f as unknown as { growthTimer: number }).growthTimer = growthTimer;
-  if (pop < cap && pop < 18 && f.stock.food >= pop * 2 + 4 && growthTimer > P.growthRate / diff) {
-    (f as unknown as { growthTimer: number }).growthTimer = 0;
+  if (pop < cap && pop < 18 && f.stock.food >= pop * 2 + 4 && f.growthTimer > P.growthRate / diff) {
+    f.growthTimer = 0;
     f.stock.food -= 4;
     const cf = complete.find((b) => b.type === "campfire");
     const sp = cf ? findFlatSpot(isl, cf.x, cf.z, 0, rng, 30, 1.5) : null;
@@ -139,7 +139,9 @@ export function thinkOverlord(w: World, f: Faction, rng: RNG) {
 
   // ── Diplomacy: trade offers ──
   const me = w.factions[w.playerFaction];
-  if (me && f.tradeOffers.length === 0 && rng.chance(P.tradeChance * 0.12) && w.time > 90 && (f.relations[w.playerFaction] ?? 0) > -50) {
+  const firstTrade = f.persona === "wildkeeper" && !w.flags.firstTrade && w.time > 60;
+  if (me && f.tradeOffers.length === 0 && (firstTrade || rng.chance(P.tradeChance * 0.12)) && w.time > 60 && (f.relations[w.playerFaction] ?? 0) > -50) {
+    if (firstTrade) w.flags.firstTrade = 1;
     const offer = makeTradeOffer(w, f, me, rng);
     if (offer) {
       f.tradeOffers.push(offer);
@@ -226,9 +228,13 @@ function pickBuildSpot(w: World, f: Faction, isl: World["islands"][number], ax: 
 function makeTradeOffer(w: World, f: Faction, me: Faction, rng: RNG): TradeOffer | null {
   // Offer what we have plenty of, ask for what we lack
   const res: ResourceType[] = ["wood", "stone", "food"];
-  const surplus = res.filter((r) => f.stock[r] > 20).sort((a, b) => f.stock[b] - f.stock[a]);
-  const lacking = res.filter((r) => f.stock[r] < 12 && me.stock[r] >= 6).sort((a, b) => f.stock[a] - f.stock[b]);
-  if (!surplus.length || !lacking.length || surplus[0] === lacking[0]) return null;
+  const surplus = res.filter((r) => f.stock[r] > 14).sort((a, b) => f.stock[b] - f.stock[a]);
+  const lacking = res.filter((r) => f.stock[r] < 20 && me.stock[r] >= 6).sort((a, b) => f.stock[a] - f.stock[b]);
+  if (!surplus.length || !lacking.length) return null;
+  if (surplus[0] === lacking[0]) {
+    if (surplus.length < 2) return null;
+    surplus.shift();
+  }
   const give = surplus[0];
   const want = lacking[0];
   const rel = f.relations[w.playerFaction] ?? 0;
@@ -242,30 +248,17 @@ function makeTradeOffer(w: World, f: Faction, me: Faction, rng: RNG): TradeOffer
 }
 
 function launchRaid(w: World, f: Faction, me: Faction, rng: RNG) {
-  const isl = islandById(w, me.homeIslandId);
-  // Arrive at a coastal walkable cell far from the player's campfire
-  const n = isl.size;
-  let spot: { x: number; z: number } | null = null;
-  let bd = 0;
-  for (let i = 0; i < 60; i++) {
-    const idx = rng.int(0, n * n - 1);
-    if (isl.blocked[idx] !== 0) continue;
-    const x = isl.ox + (idx % n) + 0.5;
-    const z = isl.oz + Math.floor(idx / n) + 0.5;
-    const d = dist2(x, z, isl.spawnPoint.x, isl.spawnPoint.z);
-    if (d > bd) {
-      bd = d;
-      spot = { x, z };
-    }
-  }
-  if (!spot) return;
-  const raider = spawnCreature(w, "goblin", f.id, isl.id, spot.x, spot.z, rng);
+  const home = islandById(w, f.homeIslandId);
+  const cf = buildingsOf(w, f.id, "campfire").find((b) => b.complete);
+  const raider = spawnCreature(w, "goblin", f.id, home.id, cf ? cf.x : home.spawnPoint.x, cf ? cf.z : home.spawnPoint.z, rng);
   raider.traits = ["greedy", "brave"];
-  raider.state = "raid";
-  raider.raidTarget = { factionId: me.id, phase: "go" };
-  raider.y += 5;
-  effect(w, "fall", spot.x, spot.z, { ttl: 2 });
-  chronicle(w, `A raider from ${f.name} — ${raider.name} — has landed on your island! Dunk them before they reach your stores.`, "rival", 3, { faction: f.id, x: spot.x, z: spot.z, islandId: isl.id });
+  raider.raidTarget = { factionId: me.id, phase: "go", homeIslandId: home.id };
+  const skiff = boardSkiff(w, [raider], me.homeIslandId, "raid", rng);
+  if (!skiff) {
+    delete w.creatures[raider.id];
+    return;
+  }
+  chronicle(w, `A raiding skiff from ${f.name} has set sail for your island! ${raider.name} is aboard, eyeing your food stores.`, "rival", 3, { faction: f.id, x: skiff.sx, z: skiff.sz, islandId: home.id });
   f.aiGoal = "raid";
   f.aiGoalText = PERSONA[f.persona!].goals.raid ?? "Raiding";
 }
