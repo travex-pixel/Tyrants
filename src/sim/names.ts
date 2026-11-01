@@ -18,8 +18,9 @@ const MUSHROOM = [
 ];
 const SUFFIXES = ["the Lesser", "Junior", "II", "the Bold", "the Damp", "III", "the Unwise", "of the Lake", "the Loud", "Again"];
 
+const BOAR = ["Tusker", "Bristle", "Hamlet", "Snorter", "Mudbelly", "Chomp", "Rooter", "Grunt", "Truffle-hog", "Porkchop", "Stampy", "Bacon"];
 export function generateName(rng: RNG, species: SpeciesId, taken: Set<string>): string {
-  const pool = species === "goblin" ? GOBLIN : species === "trollkin" ? TROLLKIN : MUSHROOM;
+  const pool = species === "goblin" ? GOBLIN : species === "trollkin" ? TROLLKIN : species === "boar" ? BOAR : MUSHROOM;
   for (let i = 0; i < 12; i++) {
     const n = rng.pick(pool);
     if (!taken.has(n)) return n;

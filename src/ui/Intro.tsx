@@ -5,91 +5,146 @@ import { getSession, getWorld } from "@/src/render/context";
 import { cameraCtl } from "@/src/render/cameraCtl";
 import { CHALLENGES, finishChallenge } from "@/src/sim/challenges";
 import { Icons } from "./icons";
+import { audio } from "@/src/audio/audio";
 import { bestScore, recordScore } from "./Menu";
 
-const LINES = ["An entire world. Yours to ruin.", "Look closely. They're alive, and they have opinions.", "Go on. Pick someone up.", "Now throw them. Somewhere wet, ideally.", "Your neighbours are getting stronger."];
+/**
+ * The first 60 seconds. Every beat is gated on the player actually doing the thing:
+ *  0 reveal · 1 alive · 2 pick up · 3 throw · 4 make a friend · 5 shine the Sun · 6 build a farm · 7 payoff · 8 the wider world
+ */
+const LINES: Record<number, { big: string; small?: string }> = {
+  0: { big: "An entire world. Yours to ruin." },
+  1: { big: "Look. They're alive, and they have opinions." },
+  2: { big: "Pick someone up.", small: "Drag a creature with your finger or mouse" },
+  3: { big: "Now throw them. Into the lake if you can!", small: "Flick and let go" },
+  4: { big: "Make a friend.", small: "Tap FRIEND, then tap the ground" },
+  5: { big: "Shine the Sun on them.", small: "Tap SUN, then tap the group" },
+  6: { big: "Build them a Farm.", small: "Tap BUILD, pick the Farm, tap the ground" },
+  7: { big: "They'll build it themselves. Watch them carry.", small: "Everything they do, they remember" },
+  8: { big: "Your neighbours are getting stronger." },
+};
 
 export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
   const stage = useGame((s) => s.intro);
   const setIntro = useGame((s) => s.setIntro);
+  const setPointer = useGame((s) => s.setPointerTarget);
+  useGame((s) => s.uiTick);
   const timer = useRef<number | null>(null);
   const [visibleLine, setVisibleLine] = useState(true);
+  const baseline = useRef<{ spawns: number; blessed: number; buildings: number; thrown: number } | null>(null);
 
+  // stage timers and pointer targets
   useEffect(() => {
-    if (stage < 0) return;
+    if (stage < 0) {
+      setPointer(null);
+      return;
+    }
     setVisibleLine(false);
     const t = window.setTimeout(() => setVisibleLine(true), 50);
     if (timer.current) window.clearTimeout(timer.current);
+    const w = getWorld();
+    if (w && !baseline.current) baseline.current = { spawns: (w.flags.playerSpawns as number) ?? 0, blessed: w.stats.blessed, buildings: Object.values(w.buildings).filter((b) => b.faction === w.playerFaction).length, thrown: w.stats.thrown };
     if (stage === 0) {
       timer.current = window.setTimeout(() => {
-        // zoom in on the creatures
-        const w = getWorld();
         if (w) {
-          const c = Object.values(w.creatures).find((x) => x.faction === w.playerFaction);
-          if (c) cameraCtl.focus(c.x, c.z, 22);
+          const c = Object.values(w.creatures).find((x) => x.faction === w.playerFaction && x.species === "goblin") ?? Object.values(w.creatures).find((x) => x.faction === w.playerFaction);
+          if (c) cameraCtl.focus(c.x, c.z, 24);
         }
         setIntro(1);
       }, 6500);
     } else if (stage === 1) {
-      timer.current = window.setTimeout(() => setIntro(2), 4200);
+      timer.current = window.setTimeout(() => setIntro(2), 3600);
+    } else if (stage === 2) {
+      if (w) {
+        const c = Object.values(w.creatures).find((x) => x.faction === w.playerFaction && x.species === "goblin" && x.state !== "held") ?? Object.values(w.creatures).find((x) => x.faction === w.playerFaction);
+        if (c) setPointer({ creatureId: c.id });
+      }
+    } else if (stage === 3) {
+      setPointer(null);
+    } else if (stage === 4) {
+      useGame.getState().setPower("spawn");
+      useGame.getState().setSpawnSpecies("goblin");
+      if (w) {
+        const cf = Object.values(w.buildings).find((b) => b.faction === w.playerFaction && b.type === "campfire");
+        if (cf) setPointer({ x: cf.x + 2.5, z: cf.z + 1.5 });
+      }
+    } else if (stage === 5) {
+      useGame.getState().setPower("bless");
+      if (w) {
+        const cf = Object.values(w.buildings).find((b) => b.faction === w.playerFaction && b.type === "campfire");
+        if (cf) setPointer({ x: cf.x, z: cf.z });
+      }
+    } else if (stage === 6) {
+      useGame.getState().setPower("grab");
+      useGame.getState().setPanel("build");
+      setPointer(null);
+    } else if (stage === 7) {
+      useGame.getState().setPanel("none");
+      setPointer(null);
+      timer.current = window.setTimeout(() => {
+        cameraCtl.zoom(1.6);
+        setIntro(8);
+      }, 3200);
     }
     return () => window.clearTimeout(t);
-  }, [stage, setIntro]);
-
-  useEffect(() => {
-    if (stage === 4) cameraCtl.zoom(1.6);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
+
+  // action gates (checked on the UI tick)
+  useEffect(() => {
+    const w = getWorld();
+    if (!w || stage < 0 || !baseline.current) return;
+    const b = baseline.current;
+    if (stage === 3 && w.stats.thrown > b.thrown) {
+      // wait for the flight to end, then celebrate
+      const flying = Object.values(w.creatures).some((c) => c.faction === w.playerFaction && (c.state === "thrown" || c.state === "swim"));
+      if (!flying) {
+        audio.giggle();
+        setIntro(4);
+      }
+    } else if (stage === 4 && ((w.flags.playerSpawns as number) ?? 0) > b.spawns) {
+      setIntro(5);
+    } else if (stage === 5 && w.stats.blessed > b.blessed) {
+      setIntro(6);
+    } else if (stage === 6 && Object.values(w.buildings).filter((x) => x.faction === w.playerFaction).length > b.buildings) {
+      setIntro(7);
+    }
+  });
 
   if (stage < 0) return null;
   const skip = () => {
     if (timer.current) window.clearTimeout(timer.current);
+    setPointer(null);
+    useGame.getState().setPanel("none");
+    useGame.getState().setPower("grab");
     onFinish();
   };
+  const line = LINES[stage] ?? LINES[8];
+  const top = stage >= 2 && stage <= 7;
   return (
     <div className="absolute inset-0 z-30 pointer-events-none">
-      {stage < 4 && (
+      {stage < 8 && (
         <div className="absolute top-4 right-4 pointer-events-auto">
           <button className="btn btn-sm" onClick={skip}>
             Skip intro
           </button>
         </div>
       )}
-      <div className={`absolute left-1/2 -translate-x-1/2 ${stage >= 2 ? "top-[14%]" : "bottom-[18%]"} text-center px-6 transition-opacity duration-700 ${visibleLine ? "opacity-100" : "opacity-0"}`}>
+      <div className={`absolute left-1/2 -translate-x-1/2 ${top ? "top-[14%]" : "bottom-[18%]"} text-center px-6 transition-opacity duration-700 ${visibleLine ? "opacity-100" : "opacity-0"}`}>
         <div className="text-2xl sm:text-4xl font-black text-[#fff4dc] drop-shadow-[0_4px_16px_rgba(0,0,0,0.7)]" style={{ letterSpacing: "-0.01em", textShadow: "0 2px 0 rgba(60,30,5,0.6), 0 6px 18px rgba(0,0,0,0.6)" }}>
-          {LINES[stage]}
+          {line.big}
         </div>
-        {stage === 2 && <div className="mt-2 text-sm font-bold text-[#fff1d0] drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">Drag a creature with your finger or mouse</div>}
-        {stage === 3 && <div className="mt-2 text-sm font-bold text-[#fff1d0] drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">Flick and release to throw</div>}
+        {line.small && <div className="mt-2 text-sm font-bold text-[#fff1d0] drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">{line.small}</div>}
       </div>
-      {stage === 4 && (
+      {stage === 8 && (
         <div className="absolute left-1/2 -translate-x-1/2 bottom-[16%] flex flex-col sm:flex-row gap-3 pointer-events-auto pop">
-          <button
-            className="btn btn-primary"
-            onClick={() => {
-              onFinish();
-              useGame.getState().setPanel("build");
-            }}
-          >
-            <Icons.mallet style={{ width: 18, height: 18 }} /> Build
+          <button className="btn btn-primary" onClick={() => { skip(); useGame.getState().setPanel("build"); }}>
+            <Icons.mallet style={{ width: 18, height: 18 }} /> Keep building
           </button>
-          <button
-            className="btn"
-            onClick={() => {
-              onFinish();
-              const w = getWorld();
-              if (w && w.islands[1]) useGame.getState().focusCamera(w.islands[1].center.x, w.islands[1].center.z, 40);
-              useGame.getState().toast("Pan around to find your rivals' islands. Tap one to size them up.", "info");
-            }}
-          >
-            <Icons.eye style={{ width: 18, height: 18 }} /> Explore
+          <button className="btn" onClick={() => { skip(); const w = getWorld(); if (w && w.islands[1]) useGame.getState().focusCamera(w.islands[1].center.x, w.islands[1].center.z, 48); useGame.getState().toast("Tap a rival island to size them up. Their Book tab lets you trade or raid.", "info"); }}>
+            <Icons.eye style={{ width: 18, height: 18 }} /> Meet the neighbours
           </button>
-          <button
-            className="btn"
-            onClick={() => {
-              onFinish();
-              useGame.getState().setPanel("players");
-            }}
-          >
+          <button className="btn" onClick={() => { skip(); useGame.getState().setBookTab("players"); }}>
             <Icons.users style={{ width: 18, height: 18 }} /> Play with friends
           </button>
         </div>

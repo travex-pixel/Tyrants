@@ -108,10 +108,10 @@ export function updateGrowth(w: World) {
       const isl = islandById(w, f.homeIslandId);
       const spot = cf ? findFlatSpot(isl, cf.x, cf.z, 0, rng, 30, 2) : null;
       const existing = creaturesOf(w, fid);
-      const counts: Record<SpeciesId, number> = { goblin: 0, trollkin: 0, mushroom: 0 };
+      const counts: Record<SpeciesId, number> = { goblin: 0, trollkin: 0, mushroom: 0, boar: 0 };
       for (const c of existing) counts[c.species]++;
       // the dominant species attracts its own kind, with a little variety
-      const species: SpeciesId = rng.chance(0.3) ? rng.pick(["goblin", "trollkin", "mushroom"] as SpeciesId[]) : ((Object.keys(counts) as SpeciesId[]).sort((a, b) => counts[b] - counts[a])[0] ?? "goblin");
+      const species: SpeciesId = rng.chance(0.3) ? rng.pick(["goblin", "trollkin", "mushroom"] as SpeciesId[]) : ((Object.keys(counts) as SpeciesId[]).filter((k) => k !== "boar").sort((a, b) => counts[b] - counts[a])[0] ?? "goblin");
       const c = spawnCreature(w, species, fid, isl.id, spot ? spot.x : isl.spawnPoint.x, spot ? spot.z : isl.spawnPoint.z, rng);
       f.stock.food -= 4;
       c.y += 3;

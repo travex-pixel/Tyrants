@@ -116,6 +116,7 @@ function land(w: World, p: Projectile, isl: World["islands"][number], water: boo
   }
   if (victims.length) chronicle(w, `A flying ${p.kind} flattened ${victims.map((v) => v.name).join(" and ")}.`, "power", 2, { x: p.x, z: p.z, islandId: isl.id });
   addMayhem(w, 2 + victims.length * 2, p.x, p.z);
+  w.flags.hitStop = w.time;
   for (const b of buildingsNear(w, p.x, p.z, 1.6 + p.scale, isl.id)) damageBuilding(w, b, p.kind === "tree" ? 30 : 45, `a flying ${p.kind} thrown by the hand`, rng);
   for (const c of creaturesNear(w, p.x, p.z, 7, isl.id)) remember(c, "threat", 0.7, undefined, p.x, p.z, w.time);
   if (p.kind === "tree") {

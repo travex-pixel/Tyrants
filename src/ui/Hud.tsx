@@ -92,6 +92,9 @@ export function Hud({ actions }: { actions: HudActions }) {
   const unread = w.chronicle.filter((e) => e.id > lastSeen && e.importance >= 2).length;
   const night = isNight(w);
   const hideForIntro = intro >= 0 && intro < 4;
+  const teaching = intro >= 4 && intro <= 7;
+  const tokenVisible = (id: string) => !teaching || (intro === 4 ? id === "spawn" : intro === 5 ? id === "spawn" || id === "bless" : id === "build" || id === "spawn" || id === "bless");
+  const teachToken = intro === 4 ? "spawn" : intro === 5 ? "bless" : intro === 6 && !buildType ? "build" : null;
   const buildOpen = panel === "build";
   const digging = (cooldowns.terraLower ?? 0) > performance.now();
   const mayhem = (w.flags.mayhem as number) ?? 0;
@@ -115,13 +118,13 @@ export function Hud({ actions }: { actions: HudActions }) {
     if (tk) useGame.getState().toast(tk.hint, "info");
   };
 
-  const Token = ({ id, name, icon, tint, active, locked, cost, onClick }: { id: string; name: string; icon: keyof typeof Icons; tint: string; active: boolean; locked?: boolean; cost?: number; onClick: () => void }) => {
+  const Token = ({ id, name, icon, tint, active, locked, cost, teach, onClick }: { id: string; name: string; icon: keyof typeof Icons; tint: string; active: boolean; locked?: boolean; cost?: number; teach?: boolean; onClick: () => void }) => {
     const I = Icons[icon];
     const cdUntil = cooldowns[id] ?? 0;
     const cdTotal = (POWER_COOLDOWNS[id] ?? 0) * 1000;
     const cdFrac = cdTotal > 0 ? Math.max(0, Math.min(1, (cdUntil - performance.now()) / cdTotal)) : 0;
     return (
-      <button className={`token ${active ? "active" : ""} ${locked ? "locked" : ""}`} style={{ "--tint": tint } as React.CSSProperties} onClick={onClick} title={name}>
+      <button className={`token ${active ? "active" : ""} ${locked ? "locked" : ""} ${teach ? "teach" : ""}`} style={{ "--tint": tint } as React.CSSProperties} onClick={onClick} title={name}>
         <I />
         <span>{locked ? `${cost}✦` : name}</span>
         {cdFrac > 0 && <i className="cd" style={{ transform: `scaleY(${cdFrac})` }} />}
@@ -158,17 +161,17 @@ export function Hud({ actions }: { actions: HudActions }) {
             <div className="plaque hidden md:inline-block fade-up" title={w.meta.name}>{w.meta.name}</div>
             {mayhem >= 2 && <div className="chip pulse" style={{ background: "linear-gradient(180deg,#ffd166,#e9a93c)", color: "#3b2508", border: "1px solid #7a4d14" }}>Mayhem {Math.floor(mayhem)}</div>}
           </div>
-          <button className="bar-wood row p-1.5 fade-up relative" style={{ gap: 6, padding: "6px 12px" }} title="The Book: story, rivals, friends, awards, settings" onClick={() => { audio.click(); setPanel(BOOK_TABS.some((t) => t.id === panel) ? "none" : bookTab); }}>
+          {!teaching && <button className="bar-wood row p-1.5 fade-up relative" style={{ gap: 6, padding: "6px 12px" }} title="The Book: story, rivals, friends, awards, settings" onClick={() => { audio.click(); setPanel(BOOK_TABS.some((t) => t.id === panel) ? "none" : bookTab); }}>
             <Icons.book2 style={{ width: 26, height: 26, color: "#f6e8cf" }} />
             <span className="icon-label" style={{ color: "#f6e8cf", fontSize: 11 }}>Book</span>
             {!!unread && <span className="badge">{unread > 9 ? "9+" : unread}</span>}
             {net.connected && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--good)]" />}
-          </button>
+          </button>}
         </div>
       )}
 
-      {!hideForIntro && panel === "none" && <DecreesPanel />}
-      {!hideForIntro && <OmenCard />}
+      {!hideForIntro && !teaching && panel === "none" && <DecreesPanel />}
+      {!hideForIntro && !teaching && <OmenCard />}
       <AscendModal />
 
       {/* Toasts */}
@@ -207,7 +210,7 @@ export function Hud({ actions }: { actions: HudActions }) {
           {buildOpen && (
             <div className="panel p-2 pop" style={{ pointerEvents: "auto" }}>
               <div className="flex gap-2 flex-wrap justify-center">
-                {(buildMore ? [...BUILD_MAIN, ...BUILD_MORE] : BUILD_MAIN).map((t) => {
+                {(teaching ? (["farm"] as BuildingType[]) : buildMore ? [...BUILD_MAIN, ...BUILD_MORE] : BUILD_MAIN).map((t) => {
                   const d = BUILDINGS[t];
                   const locked = d.unlock && !w.achievements[d.unlock]?.unlockedAt;
                   const I = Icons[BUILD_ICON[t]];
@@ -219,10 +222,10 @@ export function Hud({ actions }: { actions: HudActions }) {
                     </button>
                   );
                 })}
-                <button className="tile more" onClick={() => { setBuildMore((v) => !v); audio.click(); }} title="More buildings">
+                {!teaching && <button className="tile more" onClick={() => { setBuildMore((v) => !v); audio.click(); }} title="More buildings">
                   <span style={{ fontSize: 22, fontWeight: 900 }}>{buildMore ? "–" : "+"}</span>
                   <span className="tile-name">{buildMore ? "Less" : "More"}</span>
-                </button>
+                </button>}
               </div>
               {buildType && (
                 <div className="row mt-2 justify-center text-[12px] font-bold">
@@ -263,10 +266,10 @@ export function Hud({ actions }: { actions: HudActions }) {
             </div>
           )}
           <div className="panel row p-1.5" style={{ gap: 6 }}>
-            {TOKENS.map((t) => (
-              <Token key={t.id} id={t.id} name={t.name} icon={t.id === "spawn" ? t.icon : t.icon} tint={t.tint} active={t.id === "build" ? buildOpen || !!buildType : power === t.id && !digging && !buildType} onClick={() => armToken(t.id)} />
+            {TOKENS.filter((t) => tokenVisible(t.id)).map((t) => (
+              <Token key={t.id} id={t.id} name={t.name} icon={t.icon} tint={t.tint} teach={teachToken === t.id} active={t.id === "build" ? buildOpen || !!buildType : power === t.id && !digging && !buildType} onClick={() => armToken(t.id)} />
             ))}
-            {anyPouch && <Token id="pouch" name="More" icon="pouch" tint="#6a4aa8" active={pouchOpen || (power === "terraform" && digging) || power === "giant" || power === "clone" || power === "storm"} onClick={() => { audio.click(); setPouchOpen(!pouchOpen); }} />}
+            {anyPouch && !teaching && <Token id="pouch" name="More" icon="pouch" tint="#6a4aa8" active={pouchOpen || (power === "terraform" && digging) || power === "giant" || power === "clone" || power === "storm"} onClick={() => { audio.click(); setPouchOpen(!pouchOpen); }} />}
           </div>
         </div>
       )}

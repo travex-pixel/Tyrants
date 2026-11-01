@@ -26,8 +26,15 @@ function Ticker() {
   const fpsT = useRef(0);
   useFrame((_, dt) => {
     const s = getSession();
-    const d = Math.min(dt, 0.25);
-    if (s) s.update(d);
+    let d = Math.min(dt, 0.25);
+    if (s) {
+      const w = s.world;
+      const now = w.time;
+      const hitStop = (w.flags.hitStop as number | undefined) ?? -1;
+      if (hitStop >= 0 && now - hitStop < 0.001) d *= 0; // one frozen frame on impact
+      else if ((w.flags.slowmoUntil as number | undefined) !== undefined && now < (w.flags.slowmoUntil as number)) d *= 0.3; // a beat of slow motion
+      s.update(d);
+    }
     acc.current += d;
     frames.current++;
     fpsT.current += d;

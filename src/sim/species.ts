@@ -74,6 +74,25 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     height: 0.7,
     blurb: "Peaceful, eccentric farmers who keep everyone fed and occasionally talk to plants.",
   },
+
+  boar: {
+    id: "boar",
+    name: "Boar",
+    plural: "Boars",
+    speed: 3.6,
+    carry: 0,
+    gatherMul: {},
+    buildMul: 0,
+    farmMul: 0,
+    hungerRate: 0.12,
+    energyRate: 0.3,
+    jobAffinity: { gather: 0, build: 0, farm: 0, haul: 0, explore: 0 },
+    traitBias: { brave: 2, greedy: 2 },
+    color: "#6b4a2e",
+    accent: "#f3ead8",
+    height: 0.6,
+    blurb: "Wild, hungry and rude. Eats crops and berries, flees the brave, loves the Sun.",
+  },
 };
 
 export const TRAITS: Record<TraitId, { name: string; text: string }> = {

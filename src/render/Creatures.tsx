@@ -29,7 +29,7 @@ function lerpAngle(a: number, b: number, t: number) {
 }
 
 /** Species body plan: local offsets & scales for every part (unit creature, before c.scale). */
-function plan(c: Creature) {
+function planRaw(c: Creature) {
   switch (c.species) {
     case "goblin":
       // hunched, big head, huge ears, oversized hands, a scrap of loincloth
@@ -39,11 +39,21 @@ function plan(c: Creature) {
       // broad and heavy: wide body, sunken small head, thick arms, big fists, tusks, stony back
       return { bodyS: [0.82, 0.74, 0.64], bodyY: 0.62, bodyTilt: 0.1, headS: [0.5, 0.42, 0.48], headY: 1.22, headZ: 0.2, ear: 0.1, earY: 1.3, earAngle: 1.3, cap: 0, armL: 0.62, armW: 1.7, hand: 0.24, legL: 0.36, legW: 1.6, legY: 0.17, eyeS: 0.085, eyeSep: 0.15, eyeY: 1.26, eyeZ: 0.42, nose: 0,
         color: c.variant > 0.6 ? "#8ea3c4" : c.variant > 0.3 ? "#7a92b5" : "#9a9aa6", accent: "#f3ead8", belly: "#5f5a66", bellyS: [0.5, 0.28, 0.5], bellyY: 0.42, skinHead: null };
+    case "boar":
+      // a low, long body on four stubby legs, a snout, little ears and a pair of tusks
+      return { bodyS: [0.5, 0.42, 0.8], bodyY: 0.42, bodyTilt: 0, headS: [0.4, 0.36, 0.42], headY: 0.52, headZ: 0.62, ear: 0.18, earY: 0.74, earAngle: 0.7, cap: 0, armL: 0.26, armW: 1.2, hand: 0.08, legL: 0.26, legW: 1.2, legY: 0.12, eyeS: 0.07, eyeSep: 0.13, eyeY: 0.6, eyeZ: 0.3, nose: 0.14, armZ: 0.45, legZ: -0.45,
+        color: c.variant > 0.5 ? "#6b4a2e" : "#7d5a3a", accent: "#f3ead8", belly: "#8a6a4a", bellyS: [0.001, 0.001, 0.001], bellyY: 0, skinHead: null };
     default:
       // mushroom folk: tall cream stem, a big spotted cap, small arms, round face low on the stem
       return { bodyS: [0.3, 0.62, 0.3], bodyY: 0.45, bodyTilt: 0, headS: [0.3, 0.26, 0.3], headY: 1.0, headZ: 0, ear: 0, earY: 0, earAngle: 0, cap: 0.95, armL: 0.36, armW: 0.75, hand: 0.1, legL: 0.24, legW: 0.8, legY: 0.11, eyeS: 0.1, eyeSep: 0.12, eyeY: 0.78, eyeZ: 0.27, nose: 0,
         color: "#efe3cc", accent: c.variant > 0.66 ? "#c9412f" : c.variant > 0.33 ? "#d9823a" : "#b9875a", belly: "#f7efe0", bellyS: [0.001, 0.001, 0.001], bellyY: 0, skinHead: null };
   }
+}
+
+type Plan = ReturnType<typeof planRaw> & { armZ: number; legZ: number };
+function plan(c: Creature): Plan {
+  const p = planRaw(c) as ReturnType<typeof planRaw> & { armZ?: number; legZ?: number };
+  return { ...p, armZ: p.armZ ?? 0, legZ: p.legZ ?? 0 } as Plan;
 }
 
 export function Creatures() {
@@ -147,6 +157,7 @@ export function Creatures() {
         if (prev !== undefined) {
           if (c.state === "swim") {
             audio.splash();
+            audio.giggle();
             rc.squash = 0.6;
           } else if (c.state === "recover" && prev === "thrown") {
             audio.thud();
@@ -302,6 +313,9 @@ function writeCreature(c: Creature, rc: RenderCreature, i: number, t: number, R:
   if (c.species === "goblin") {
     setPart(R, "noseL", i, Math.sin(headYaw) * (P.eyeZ + 0.1), P.eyeY - 0.1, hz + Math.cos(headYaw) * (P.eyeZ + 0.1), Math.PI / 2 + 0.2, headYaw, 0, P.nose, 0.22, P.nose, skinC.clone().offsetHSL(0, 0.05, -0.05));
     hide(R, "noseR", i);
+  } else if (c.species === "boar") {
+    setPart(R, "noseL", i, Math.sin(headYaw) * (P.eyeZ + 0.12), P.eyeY - 0.12, hz + Math.cos(headYaw) * (P.eyeZ + 0.12), Math.PI / 2, headYaw, 0, P.nose, 0.2, P.nose, new THREE.Color("#c98a7a"));
+    setPart(R, "noseR", i, -0.12, P.eyeY - 0.2, hz + Math.cos(headYaw) * (P.eyeZ + 0.02), 0.5, headYaw, 0.3, 0.06, 0.14, 0.06, col.set(P.accent));
   } else if (c.species === "trollkin") {
     const tz = hz + Math.cos(headYaw) * (P.eyeZ - 0.02);
     setPart(R, "noseL", i, -0.13 + Math.sin(headYaw) * P.eyeZ, P.eyeY - 0.2, tz, 0.3, headYaw, 0.15, 0.09, 0.22, 0.09, col.set(P.accent));
@@ -332,7 +346,7 @@ function writeCreature(c: Creature, rc: RenderCreature, i: number, t: number, R:
   // brows: angry when grumpy/fighting, raised when scared
   const browTilt = st === "fight" || c.mood === "grumpy" ? 0.45 : scared ? -0.25 : 0.05;
   const browY = eyeY + eyeScale * 0.95 + (scared ? 0.03 : 0);
-  if (c.species !== "mushroom" && !sleepy) {
+  if (c.species !== "mushroom" && c.species !== "boar" && !sleepy) {
     setPart(R, "browL", i, ex - Math.cos(headYaw) * P.eyeSep, browY, ez + Math.sin(headYaw) * P.eyeSep + 0.01, 0, headYaw, browTilt, eyeScale * 1.4, eyeScale * 0.5, eyeScale * 0.5);
     setPart(R, "browR", i, ex + Math.cos(headYaw) * P.eyeSep, browY, ez - Math.sin(headYaw) * P.eyeSep + 0.01, 0, headYaw, -browTilt, eyeScale * 1.4, eyeScale * 0.5, eyeScale * 0.5);
   } else {
@@ -398,8 +412,8 @@ function writeCreature(c: Creature, rc: RenderCreature, i: number, t: number, R:
   const halfArm = 0.8 * armS * 0.5;
   const pl = pivot(armLx, armLz, halfArm);
   const pr = pivot(armRx, armRz, halfArm);
-  setPart(R, "armL", i, -ax + pl.x, shoulderY + pl.y, pl.z, armLx, 0, armLz, armS * P.armW, armS, armS * P.armW, skinC);
-  setPart(R, "armR", i, ax + pr.x, shoulderY + pr.y, pr.z, armRx, 0, armRz, armS * P.armW, armS, armS * P.armW, skinC);
+  setPart(R, "armL", i, -ax + pl.x, shoulderY + pl.y, P.armZ + pl.z, armLx, 0, armLz, armS * P.armW, armS, armS * P.armW, skinC);
+  setPart(R, "armR", i, ax + pr.x, shoulderY + pr.y, P.armZ + pr.z, armRx, 0, armRz, armS * P.armW, armS, armS * P.armW, skinC);
   // hands sit at the arm ends: capsule of length ~0.8*armS rotated by Euler(rx, 0, rz) about the shoulder
   const handAt = (sign: number, rx: number, rz: number) => {
     const L = 0.8 * armS * 0.5 + P.hand * 0.6;
@@ -416,8 +430,8 @@ function writeCreature(c: Creature, rc: RenderCreature, i: number, t: number, R:
   const halfLeg = 0.8 * legS * 0.5;
   const ll = pivot(legSwing, 0, halfLeg);
   const lr = pivot(-legSwing, 0, halfLeg);
-  setPart(R, "legL", i, -P.bodyS[0] * 0.45, hipY + ll.y, ll.z, legSwing, 0, 0, legS * P.legW, legS, legS * P.legW, skinC.clone().offsetHSL(0, 0, -0.1));
-  setPart(R, "legR", i, P.bodyS[0] * 0.45, hipY + lr.y, lr.z, -legSwing, 0, 0, legS * P.legW, legS, legS * P.legW, skinC.clone().offsetHSL(0, 0, -0.1));
+  setPart(R, "legL", i, -P.bodyS[0] * 0.45, hipY + ll.y, P.legZ + ll.z, legSwing, 0, 0, legS * P.legW, legS, legS * P.legW, skinC.clone().offsetHSL(0, 0, -0.1));
+  setPart(R, "legR", i, P.bodyS[0] * 0.45, hipY + lr.y, P.legZ + lr.z, -legSwing, 0, 0, legS * P.legW, legS, legS * P.legW, skinC.clone().offsetHSL(0, 0, -0.1));
   // carried item
   if (c.carrying) {
     const ic = col.set(ITEM_COLORS[c.carrying.type] ?? "#ffffff");

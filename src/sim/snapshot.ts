@@ -1,5 +1,5 @@
 import type { World } from "./types";
-import { WORLD_VERSION, rebuildIslandNav } from "./world";
+import { WORLD_VERSION, rebuildIslandNav, makeFaction } from "./world";
 import { clearPathCache } from "./nav";
 
 /** Serialise a world to a compact JSON-safe object. */
@@ -25,6 +25,9 @@ export function deserializeWorld(json: string): World {
   w.level = w.level ?? 1;
   w.omen = w.omen ?? null;
   w.nextOmenAt = w.nextOmenAt ?? w.time + 120;
+  w.dare = w.dare ?? null;
+  w.nextDareAt = w.nextDareAt ?? w.time + 120;
+  if (!w.factions.wild) w.factions.wild = makeFaction("wild", "The Wild", "#8a6a3a", false, w.islands[0].id);
   w.stats = { ...{ thrown: 0, struck: 0, blessed: 0, spawned: 0, built: 0, gathered: 0, discoveries: 0, treesThrown: 0, raidsSent: 0, omens: 0, arrivals: 0 }, ...(w.stats as Partial<World["stats"]>) } as World["stats"];
   for (const fid in w.factions) {
     const f = w.factions[fid];

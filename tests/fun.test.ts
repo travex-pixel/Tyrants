@@ -141,3 +141,47 @@ describe("job preference", () => {
     void updateGoals;
   });
 });
+
+describe("wildlife & dares", () => {
+  it("boars raid, brave folk catch them, the Sun tames them", async () => {
+    const { createWorld, Engine, spawnBoars, worldRng, saveRng, population } = await import("@/src/sim");
+    const w = createWorld({ mode: "solo", seed: 13, noRivals: true, starterCreatures: 6 });
+    const e = new Engine(w);
+    const rng = worldRng(w);
+    spawnBoars(w, rng, 2);
+    saveRng(w, rng);
+    const boars = Object.values(w.creatures).filter((c) => c.faction === "wild");
+    expect(boars.length).toBe(2);
+    expect(w.chronicle.some((c) => c.text.includes("wild boars"))).toBe(true);
+    run(e, 30);
+    // tame one with the Sun
+    const b = Object.values(w.creatures).find((c) => c.faction === "wild");
+    if (b) {
+      const r = e.applyNow({ type: "bless", x: b.x, z: b.z, player: "me" });
+      expect(r.ok).toBe(true);
+      expect(w.creatures[b.id].faction).toBe("p1");
+      expect(w.flags.tamed).toBe(1);
+    }
+    run(e, 120);
+    expect(population(w, "p1")).toBeGreaterThanOrEqual(6);
+  });
+  it("dares are generated from live state, tracked and paid out", async () => {
+    const { createWorld, Engine, updateDares } = await import("@/src/sim");
+    const w = createWorld({ mode: "solo", seed: 14, noRivals: true, starterCreatures: 6 });
+    const e = new Engine(w);
+    w.time = 130;
+    w.nextDareAt = 0;
+    for (let i = 0; i < 20 && !w.dare; i++) updateDares(w);
+    expect(w.dare).not.toBeNull();
+    // force a tree dare and satisfy it
+    const tree = Object.values(w.nodes).find((n) => n.kind === "tree" && n.islandId === 1)!;
+    w.dare = { id: "d", kind: "tree", text: "Uproot a tree and throw it", startedAt: w.time, expiresAt: w.time + 60, progress: 0, target: 1, essence: 4, xp: 40, baseline: w.stats.treesThrown };
+    const ess = w.factions.p1.essence;
+    const r = e.applyNow({ type: "grabNode", nodeId: tree.id, player: "me" }) as { ok: true; id: number };
+    e.applyNow({ type: "throwNode", projectileId: r.id, vx: 2, vz: 0, vy: 3, player: "me" });
+    run(e, 4);
+    expect(w.dare).toBeNull();
+    expect(w.factions.p1.essence).toBeGreaterThan(ess);
+    expect(w.chronicle.some((c) => c.text.startsWith("Dare done"))).toBe(true);
+  });
+});

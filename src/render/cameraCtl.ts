@@ -16,6 +16,8 @@ class CameraController {
   followId: number | null = null;
   shake = 0;
   lastFocus = 0;
+  glide = { vx: 0, vy: 0 }; // pan inertia in px/s
+  viewportH = 800;
 
   pitchFor(d: number) {
     const t = THREE.MathUtils.clamp((d - this.minDist) / (this.maxDist - this.minDist), 0, 1);
@@ -38,6 +40,15 @@ class CameraController {
     this.desired.x = THREE.MathUtils.clamp(this.desired.x, this.bounds.minX, this.bounds.maxX);
     this.desired.z = THREE.MathUtils.clamp(this.desired.z, this.bounds.minZ, this.bounds.maxZ);
   }
+  /** Zoom keeping the world point under the cursor roughly fixed. */
+  zoomAt(factor: number, wx: number, wz: number) {
+    const before = this.desiredDist;
+    this.zoom(factor);
+    const k = 1 - this.desiredDist / before; // >0 when zooming in
+    this.desired.x += (wx - this.desired.x) * k * 0.9;
+    this.desired.z += (wz - this.desired.z) * k * 0.9;
+    this.clampTarget();
+  }
   rotate(dYaw: number) {
     this.desiredYaw += dYaw;
   }
@@ -57,6 +68,16 @@ class CameraController {
   }
   /** Smoothly settle toward desired values. */
   update(dt: number, groundY: number) {
+    // inertia: keep gliding after a flick, slowing down
+    if (Math.abs(this.glide.vx) + Math.abs(this.glide.vy) > 4) {
+      this.pan(this.glide.vx * dt, this.glide.vy * dt, this.viewportH);
+      const decay = Math.pow(0.08, dt);
+      this.glide.vx *= decay;
+      this.glide.vy *= decay;
+    } else {
+      this.glide.vx = 0;
+      this.glide.vy = 0;
+    }
     const k = 1 - Math.pow(0.0008, dt);
     this.target.x += (this.desired.x - this.target.x) * k;
     this.target.z += (this.desired.z - this.target.z) * k;

@@ -607,7 +607,7 @@ export function SettingsPanel({ inMenu, onReplayIntro }: { inMenu?: boolean; onR
         <input type="checkbox" checked={settings.showNames} onChange={(e) => set({ showNames: e.target.checked })} /> Show creature names when zoomed in
       </label>
       <label className="row text-sm font-semibold mt-2">
-        <input type="checkbox" checked={settings.invertDrag} onChange={(e) => set({ invertDrag: e.target.checked })} /> Invert camera drag
+        <input type="checkbox" checked={settings.invertDrag} onChange={(e) => set({ invertDrag: e.target.checked })} /> Invert camera drag (drag moves the camera instead of the world)
       </label>
       {inMenu && onReplayIntro && (
         <button className="btn w-full mt-3" onClick={onReplayIntro}>

@@ -39,7 +39,7 @@ await step("load first visit (intro)", async () => {
   await shot("01-reveal");
 });
 await step("intro progresses to pick-up prompt", async () => {
-  await page.waitForSelector("text=Go on. Pick someone up.", { timeout: 20000 });
+  await page.waitForSelector("text=Pick someone up.", { timeout: 20000 });
   await shot("02-pickup-prompt");
 });
 await step("grab and throw a creature via pointer", async () => {
@@ -84,10 +84,35 @@ await step("grab and throw a creature via pointer", async () => {
   }
   if (thrown < 1) throw new Error("throw not registered");
   await shot("04-thrown");
-  await page.waitForSelector("text=Your neighbours are getting stronger.", { timeout: 8000 });
+  await page.waitForSelector("text=Make a friend.", { timeout: 12000 });
+});
+await step("tutorial: friend, sun, farm", async () => {
+  // Friend is pre-armed: tap the ground
+  let spot = await page.evaluate(() => window.__lt.buildSpotScreen(0));
+  for (let i = 0; i < 4; i++) {
+    await page.mouse.click(spot.x + i * 10, spot.y);
+    await page.waitForTimeout(1200);
+    if ((await page.evaluate(() => window.__lt.stats())).spawned > 7) break;
+  }
+  await page.waitForSelector("text=Shine the Sun on them.", { timeout: 15000 });
+  await shot("04b-friend");
+  for (let i = 0; i < 4; i++) {
+    const c = await page.evaluate(() => window.__lt.creatureScreenPos());
+    await page.mouse.click(c.x, c.y);
+    await page.waitForTimeout(1500);
+    if ((await page.evaluate(() => window.__lt.stats())).blessed >= 1) break;
+  }
+  await page.waitForSelector("text=Build them a Farm.", { timeout: 15000 });
+  await page.waitForTimeout(500);
+  await page.locator('button.tile').filter({ hasText: /^Farm/ }).first().click({ force: true });
+  await page.waitForTimeout(400);
+  spot = await page.evaluate(() => window.__lt.buildSpotScreen(2));
+  await page.mouse.click(spot.x, spot.y);
+  await page.waitForSelector("text=Your neighbours are getting stronger.", { timeout: 15000 });
+  await shot("04c-tutorial-done");
 });
 await step("finish intro via Build", async () => {
-  await page.locator("div.z-30 button:has-text(\"Build\")").first().click({ force: true });
+  await page.locator("div.z-30 button:has-text(\"Keep building\")").first().click({ force: true });
   await page.waitForTimeout(600);
   await shot("05-build-menu");
 });

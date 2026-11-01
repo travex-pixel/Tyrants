@@ -18,7 +18,8 @@ const raycaster = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 const tmpV = new THREE.Vector3();
 
-interface PointerInfo { id: number; x: number; y: number; sx: number; sy: number; t: number; button: number; moved: boolean }
+interface PointerInfo { id: number; x: number; y: number; sx: number; sy: number; t: number; button: number; moved: boolean; vx: number; vy: number; lastT: number }
+const buzz = (ms: number) => { try { if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(ms); } catch { /* ignore */ } };
 
 export function Interaction() {
   const { gl, camera, size } = useThree();
@@ -172,7 +173,10 @@ export function Interaction() {
         if (!r.ok) {
           st.toast(r.reason, "bad");
           audio.bad();
-        } else audio.spawn();
+        } else {
+          audio.boing();
+          buzz(15);
+        }
         return;
       }
       case "lightning": {
@@ -183,6 +187,7 @@ export function Interaction() {
         if (!cooldownOk("lightning")) return;
         const r = s.dispatch({ type: "lightning", x: wp.x, z: wp.z, player: me });
         if (!r.ok) st.toast(r.reason, "bad");
+        else buzz(40);
         return;
       }
       case "bless": {
@@ -242,7 +247,10 @@ export function Interaction() {
       audio.unlock();
       isTouch.current = e.pointerType === "touch";
       el.setPointerCapture(e.pointerId);
-      pointers.current.set(e.pointerId, { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), button: e.button, moved: false });
+      pointers.current.set(e.pointerId, { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), button: e.button, moved: false, vx: 0, vy: 0, lastT: performance.now() });
+      cameraCtl.glide.vx = 0;
+      cameraCtl.glide.vy = 0;
+      cameraCtl.viewportH = size.height;
       if (pointers.current.size === 2) {
         const [a, b] = Array.from(pointers.current.values());
         pinch.current = { dist: Math.hypot(a.x - b.x, a.y - b.y), angle: Math.atan2(b.y - a.y, b.x - a.x) };
@@ -268,7 +276,7 @@ export function Interaction() {
         if (hit !== null || node !== null) {
           // drag always grabs. With no tool armed, grab immediately; with a tool armed, wait for a drag
           // so that a clean tap still applies the tool to that creature.
-          if (st.power === "grab" || st.intro >= 0) startGrab(hit, node, e.clientX, e.clientY);
+          if (st.power === "grab" || (st.intro >= 2 && st.intro <= 3)) startGrab(hit, node, e.clientX, e.clientY);
           else pendingGrab.current = { creatureId: hit, nodeId: node, sx: e.clientX, sy: e.clientY };
         }
       }
@@ -284,6 +292,7 @@ export function Interaction() {
           dragging.current = { creatureId: hit, lastX: wp?.x ?? 0, lastZ: wp?.z ?? 0, vx: 0, vz: 0, lastT: performance.now() };
           st.select(hit);
           audio.grab();
+          buzz(12);
           if (st.intro === 2) st.setIntro(3);
         }
       } else if (node !== null) {
@@ -329,7 +338,11 @@ export function Interaction() {
         const [a, b] = Array.from(pointers.current.values());
         const d = Math.hypot(a.x - b.x, a.y - b.y);
         const ang = Math.atan2(b.y - a.y, b.x - a.x);
-        if (pinch.current.dist > 0) cameraCtl.zoom(pinch.current.dist / d);
+        if (pinch.current.dist > 0) {
+          const mid = worldPoint((a.x + b.x) / 2, (a.y + b.y) / 2);
+          if (mid && mid.islandId > 0) cameraCtl.zoomAt(pinch.current.dist / d, mid.x, mid.z);
+          else cameraCtl.zoom(pinch.current.dist / d);
+        }
         // twist-to-rotate only once the fingers have clearly turned (kids trigger it by accident otherwise)
         let da = ang - pinch.current.angle;
         while (da > Math.PI) da -= Math.PI * 2;
@@ -366,7 +379,15 @@ export function Interaction() {
         cameraCtl.rotate(-dx * 0.005);
         return;
       }
-      if (p.moved) cameraCtl.pan(-dx * (st.settings.invertDrag ? -1 : 1), -dy * (st.settings.invertDrag ? -1 : 1), size.height);
+      if (p.moved) {
+        // drag the world like a sheet of paper: the ground follows the finger
+        const sgn = st.settings.invertDrag ? -1 : 1;
+        cameraCtl.pan(dx * sgn, dy * sgn, size.height);
+        const dt = Math.max(0.004, (now - p.lastT) / 1000);
+        p.vx += ((dx * sgn) / dt - p.vx) * 0.4;
+        p.vy += ((dy * sgn) / dt - p.vy) * 0.4;
+        p.lastT = now;
+      }
     };
     const onUp = (e: PointerEvent) => {
       const p = pointers.current.get(e.pointerId);
@@ -394,6 +415,7 @@ export function Interaction() {
           const k = Math.min(1, speed / 16);
           s.dispatch({ type: "throw", creatureId: d.creatureId, vx: d.vx * 0.85, vz: d.vz * 0.85, vy: 2.5 + k * 7, player: s.me.id });
           audio.throwWhoosh(0.5 + k);
+          buzz(25);
           if (st.intro === 3) st.setIntro(4);
         } else {
           s.dispatch({ type: "drop", creatureId: d.creatureId, player: s.me.id });
@@ -406,11 +428,36 @@ export function Interaction() {
       }
       if (!p) return;
       const dur = performance.now() - p.t;
-      if (!p.moved && dur < 1500) tap(e.clientX, e.clientY, p.button);
+      if (p.moved && p.button === 0 && performance.now() - p.lastT < 120) {
+        cameraCtl.glide.vx = p.vx;
+        cameraCtl.glide.vy = p.vy;
+      }
+      if (!p.moved && dur < 1500) {
+        // double-tap on empty ground: fly home
+        const lastTap = (window as unknown as { __ltLastTap?: number }).__ltLastTap ?? 0;
+        (window as unknown as { __ltLastTap?: number }).__ltLastTap = performance.now();
+        const st2 = useGame.getState();
+        if (performance.now() - lastTap < 350 && st2.power === "grab" && !st2.buildType && pickCreature(e.clientX, e.clientY, 30) === null) {
+          const w = getWorld();
+          const s2 = getSession();
+          if (w && s2) {
+            const f = w.factions[s2.myFaction];
+            const cf = Object.values(w.buildings).find((b) => b.faction === f.id && b.type === "campfire");
+            const home = w.islands.find((i) => i.id === f.homeIslandId) ?? w.islands[0];
+            st2.focusCamera(cf ? cf.x : home.spawnPoint.x, cf ? cf.z : home.spawnPoint.z, 52);
+            audio.whooshCamera();
+            return;
+          }
+        }
+        tap(e.clientX, e.clientY, p.button);
+      }
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      cameraCtl.zoom(Math.exp(e.deltaY * 0.0012));
+      const wp = worldPoint(e.clientX, e.clientY);
+      const f = Math.exp(e.deltaY * 0.0012);
+      if (wp && wp.islandId > 0) cameraCtl.zoomAt(f, wp.x, wp.z);
+      else cameraCtl.zoom(f);
     };
     const onCtx = (e: Event) => e.preventDefault();
     const onKey = (e: KeyboardEvent) => {
@@ -649,6 +696,23 @@ function LabelSync() {
       if (!(sel || hov || (close && st.settings.showNames && c.faction === s.myFaction))) continue;
       const top = (rc ? rc.y : c.y) + (c.species === "trollkin" ? 1.75 : 1.4) * c.scale + 0.2;
       put(rc ? rc.x : c.x, top, rc ? rc.z : c.z, c.name, sel ? "sel" : hov ? "hov" : "", w.factions[c.faction]?.color);
+    }
+    // dare marker
+    if (w.dare && w.dare.targetId !== undefined) {
+      const c = w.creatures[w.dare.targetId];
+      const rc = c ? renderCreatures.get(c.id) : undefined;
+      if (c) put(rc ? rc.x : c.x, (rc ? rc.y : c.y) + 2.2 * c.scale, rc ? rc.z : c.z, `★ ${Math.max(0, Math.round(w.dare.expiresAt - w.time))}s`, "dare", "#ffd166");
+    }
+    // tutorial hand pointer
+    const pt = st.pointerTarget;
+    if (pt && pt.creatureId !== undefined) {
+      const c = w.creatures[pt.creatureId];
+      const rc = c ? renderCreatures.get(c.id) : undefined;
+      if (c) put(rc ? rc.x : c.x, (rc ? rc.y : c.y) + 2.0 * c.scale + Math.sin(performance.now() / 180) * 0.25, rc ? rc.z : c.z, "☟", "hand", "#ffd166");
+    } else if (pt && pt.x !== undefined && pt.z !== undefined) {
+      const isl = islandAt(w, pt.x, pt.z);
+      const gy = isl ? Math.max(heightAt(isl, pt.x, pt.z), isl.waterLevel) : 0;
+      put(pt.x, gy + 1.6 + Math.sin(performance.now() / 180) * 0.25, pt.z, "☟", "hand", "#ffd166");
     }
     // thought bubbles: what a creature needs, shown without opening anything
     if (cameraCtl.dist < 40) {

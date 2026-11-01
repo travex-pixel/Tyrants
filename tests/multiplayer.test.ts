@@ -79,7 +79,7 @@ describe("multiplayer (host-authoritative over an in-memory transport)", () => {
     await host.host(new LocalTransport(me("host", 1)), "ROOM03", "rivals");
     const g = await GameSession.join(new LocalTransport(me("guest", 2)), "ROOM03", me("guest", 2), {});
     await tick([host, g], 1);
-    const factions = Object.values(host.world.factions).filter((f) => !f.isAI);
+    const factions = Object.values(host.world.factions).filter((f) => !f.isAI && f.id !== "wild");
     expect(factions.length).toBe(2);
     expect(Object.values(host.world.buildings).filter((b) => b.type === "campfire").length).toBe(2);
     await g.destroy();

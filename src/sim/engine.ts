@@ -8,6 +8,7 @@ import { updateGoals } from "./goals";
 import { maybeSpawnOmen, expireOmen } from "./omens";
 import { addXp } from "./progression";
 import { updateDirector } from "./director";
+import { updateDares } from "./dares";
 import { generateTasks } from "./tasks";
 import { thinkOverlord } from "./overlords";
 import { applyCommand } from "./powers";
@@ -130,6 +131,7 @@ export class Engine {
       maybeSpawnOmen(w);
       expireOmen(w);
       updateDirector(w);
+      updateDares(w);
       if (((w.flags.bowlChain as number) ?? 0) > 0 && w.time - ((w.flags.bowlChainAt as number) ?? 0) > 3) w.flags.bowlChain = 0;
       // AI overlords, staggered by their own timers
       for (const fid in w.factions) {

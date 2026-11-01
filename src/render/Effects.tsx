@@ -8,6 +8,7 @@ import type { WorldEffect } from "@/src/sim/types";
 import { audio } from "@/src/audio/audio";
 import { cameraCtl } from "./cameraCtl";
 import { useGame } from "@/src/store/game";
+import { renderCreatures } from "./context";
 
 const MAX_P = 900;
 interface P {
@@ -230,6 +231,19 @@ export function Effects() {
     if (seen.current.size > 2000) {
       const ids = new Set(w.effects.map((e) => e.id));
       seen.current = new Set(Array.from(seen.current).filter((id) => ids.has(id)));
+    }
+    // trails behind anything flying
+    for (const id in w.creatures) {
+      const c = w.creatures[id];
+      if (c.state !== "thrown") continue;
+      const rc = renderCreatures.get(c.id);
+      if (!rc) continue;
+      emit(1, rc.x, rc.y + 0.5 * c.scale, rc.z, { spread: 0.2, up: 0.2, color: "#ffffff", size: 0.12 * c.scale, grav: 0, drag: 0.9, max: 0.35 });
+    }
+    for (const id in w.projectiles) {
+      const p = w.projectiles[id];
+      if (p.held) continue;
+      emit(1, p.x, p.y, p.z, { spread: 0.4, up: 0.3, color: "#d8c8a8", size: 0.16, grav: 0, drag: 0.9, max: 0.4 });
     }
     // particles
     let i = 0;

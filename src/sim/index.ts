@@ -22,3 +22,5 @@ export * from "./projectiles";
 export * from "./skiffs";
 export * from "./mayhem";
 export * from "./director";
+export * from "./wild";
+export * from "./dares";

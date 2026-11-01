@@ -10,6 +10,7 @@ import { rebuildIslandNav } from "./world";
 import { unlockAchievement, addXp } from "./progression";
 import { boardSkiff, rimTowards } from "./skiffs";
 import { addMayhem, damageBuilding } from "./mayhem";
+import { wildBrain } from "./wild";
 
 const GRAVITY = 14;
 const ARRIVE = 0.22;
@@ -655,6 +656,19 @@ export function updateCreature(w: World, c: Creature, dt: number, rng: RNG) {
   c.decisionCooldown -= dt;
   const t = currentTask(w, c);
 
+  if (c.faction === "wild") {
+    if (wildBrain(w, c, dt, rng)) return;
+    if (c.state === "wander") {
+      if (moveAlong(w, c, dt, rng)) c.state = "idle";
+      return;
+    }
+    if (c.state === "eat") {
+      if (c.stateTime > 2) c.state = "idle";
+      return;
+    }
+    if (c.state === "idle") return;
+  }
+
   // Survival overrides work: a starving or exhausted creature drops what it is doing.
   if (c.decisionCooldown <= 0 && (c.state === "gather" || c.state === "carry" || c.state === "build" || c.state === "explore" || c.state === "wander" || c.state === "follow")) {
     if (c.hunger > 82 && !(c.state === "carry" && c.carrying?.type === "food")) {
@@ -1055,6 +1069,15 @@ export function completeBuilding(w: World, b: Building, by: Creature | null, rng
 }
 
 function updateThrown(w: World, c: Creature, dt: number, rng: RNG) {
+  // juice: a throw about to land on a crowd gets a beat of slow motion
+  if (c.vy < 0 && !w.flags[`slomo_${c.id}`]) {
+    const isl0 = islandById(w, c.islandId);
+    const g0 = Math.max(heightAt(isl0, c.x, c.z), isl0.waterLevel);
+    if (c.y - g0 < 1.6 && creaturesNear(w, c.x + c.vx * 0.2, c.z + c.vz * 0.2, 1.4, c.islandId).some((o) => o.id !== c.id && o.state !== "thrown" && o.state !== "held")) {
+      w.flags.slowmoUntil = w.time + 0.45;
+      w.flags[`slomo_${c.id}`] = 1;
+    }
+  }
   c.vy -= GRAVITY * dt;
   c.x += c.vx * dt;
   c.z += c.vz * dt;
@@ -1084,12 +1107,15 @@ function updateThrown(w: World, c: Creature, dt: number, rng: RNG) {
   if (c.y <= surface) {
     c.y = surface;
     c.vy = 0;
+    delete w.flags[`slomo_${c.id}`];
     const speed = Math.hypot(c.vx, c.vz);
     c.vx = 0;
     c.vz = 0;
     if (water) {
       effect(w, "splash", c.x, c.z, { ttl: 1.4, size: 1 + speed * 0.05 });
       effect(w, "text", c.x, c.z, { text: "SPLASH!", color: "#bfe6ff", ttl: 1.4, y: 1.2 });
+      w.flags[`dunks_${c.id}`] = ((w.flags[`dunks_${c.id}`] as number) ?? 0) + 1;
+      w.flags.lastDunkAt = w.time;
       if (c.raidTarget && c.carrying) {
         dropCarried(w, c, rng, 1.5);
         chronicle(w, `${c.name}'s raid ended in the lake. The loot floated back to shore.`, "rival", 3, { x: c.x, z: c.z, islandId: c.islandId });
@@ -1137,6 +1163,9 @@ function updateThrown(w: World, c: Creature, dt: number, rng: RNG) {
         const chain = ((w.flags.bowlChain as number) ?? 0) + strikes;
         w.flags.bowlChain = chain;
         w.flags.bowlChainAt = w.time;
+        w.flags.bestBowl = Math.max((w.flags.bestBowl as number) ?? 0, strikes);
+        w.flags.hitStop = w.time;
+        if (strikes >= 2) w.flags.slowmoUntil = w.time + 0.5;
         effect(w, "text", c.x, c.z, { text: chain >= 3 ? `STRIKE ×${chain}!` : "STRIKE!", color: "#ffd166", ttl: 1.4, y: 1.6 });
         addMayhem(w, strikes * 2, c.x, c.z);
         addXp(w, strikes * 3, "bowling");

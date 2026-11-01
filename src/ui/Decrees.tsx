@@ -28,6 +28,18 @@ export function DecreesPanel() {
           <span className="chip" style={{ padding: "1px 7px", fontSize: 11, color: "#6a4aa8" }} title="Essence: spend it on new powers in the pouch">{Math.floor(f?.essence ?? 0)}✦</span>
           <span className="muted text-[12px]">{open ? "▾" : "▸"}</span>
         </button>
+        {w.dare && (
+          <button className="dare-card w-full text-left mt-2 pointer-events-auto" onClick={() => { if (w.dare?.x !== undefined && w.dare.z !== undefined) useGame.getState().focusCamera(w.dare.x, w.dare.z, 22); }}>
+            <div className="row">
+              <span className="text-[11px] font-black tracking-widest">DARE</span>
+              <span className="flex-1 text-[13px] font-extrabold truncate">{w.dare.text}</span>
+              <span className="text-[12px] font-black tabular-nums">{Math.max(0, Math.round(w.dare.expiresAt - w.time))}s</span>
+            </div>
+            <div className="bar mt-1" style={{ height: 5, background: "rgba(60,30,10,0.25)" }}>
+              <i style={{ width: `${Math.max(0, Math.min(100, (1 - (w.time - w.dare.startedAt) / (w.dare.expiresAt - w.dare.startedAt)) * 100))}%`, background: "#3b2508" }} />
+            </div>
+          </button>
+        )}
         {open && (
           <div className="flex flex-col gap-1.5 mt-2">
             {active.map((d) => {

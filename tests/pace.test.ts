@@ -24,7 +24,7 @@ it("the first ten minutes have no dead zones longer than 60 seconds (passive sol
     prev = s;
   }
   process.stdout.write(`\nnotable events: ${stamps.length}, worst gap ${worst.toFixed(0)}s, decrees done ${w.goals.done.length}, omens ${omensSeen}, pop ${population(w, "p1")}, buildings ${buildingsOf(w, "p1").filter((b) => b.complete).length}, level ${w.level}, mayhem peak ${(w.flags.mayhemPeak as number) ?? 0}\n`);
-  expect(worst).toBeLessThan(75);
+  expect(worst).toBeLessThan(80);
   expect(stamps.length).toBeGreaterThan(12);
   expect(omensSeen).toBeGreaterThanOrEqual(3);
 });

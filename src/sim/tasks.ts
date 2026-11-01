@@ -95,6 +95,7 @@ export function generateTasks(w: World) {
 
   for (const fid in w.factions) {
     const f = w.factions[fid];
+    if (fid === "wild") continue;
     const creatures = creaturesOf(w, fid);
     if (creatures.length === 0) continue;
     const islandIds = new Set(creatures.map((c) => c.islandId));

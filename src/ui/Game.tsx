@@ -427,6 +427,11 @@ if (typeof window !== "undefined") {
       void isl;
       return { x: cf.x, z: cf.z, placed };
     },
+    ui: () => {
+      const st = useGame.getState();
+      const s = getSession();
+      return { intro: st.intro, power: st.power, panel: st.panel, buildType: st.buildType, selected: st.selectedCreature, blessed: s?.world.stats.blessed, spawns: s?.world.flags.playerSpawns };
+    },
     buildingCount: () => {
       const s = getSession();
       return s ? Object.values(s.world.buildings).filter((b) => b.faction === s.myFaction).length : 0;

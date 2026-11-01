@@ -6,6 +6,7 @@ import { maybeSpawnOmen } from "./omens";
 import { decayMayhem } from "./mayhem";
 import { heightAt } from "./terrain";
 import { relation } from "./creature";
+import { spawnBoars } from "./wild";
 
 /**
  * The Director keeps the story moving. It watches how much has happened to the player lately
@@ -28,7 +29,7 @@ export function updateDirector(w: World) {
   }
   tension += ((w.flags.mayhem as number) ?? 0) * 0.5;
   const lastIncident = (w.flags.directorAt as number) ?? 0;
-  const lull = (w.flags.directorLull as number) ?? 45;
+  const lull = (w.flags.directorLull as number) ?? 35;
   if (tension >= 4 || w.time - lastIncident < lull) return;
   // quiet: fire something
   const rng = worldRng(w);
@@ -39,6 +40,7 @@ export function updateDirector(w: World) {
     { id: "meteor", weight: level >= 2 ? 2 : 0 },
     { id: "raid", weight: level >= 2 && Object.values(w.factions).some((f) => f.isAI && f.persona === "hoarder") ? 2 : 0 },
     { id: "windfall", weight: 1 },
+    { id: "boars", weight: level >= 2 && !Object.values(w.creatures).some((c) => c.faction === "wild") ? 3 : 0 },
   ];
   const total = options.reduce((s, o) => s + o.weight, 0);
   let r = rng.next() * total;
@@ -51,7 +53,7 @@ export function updateDirector(w: World) {
     }
   }
   w.flags.directorAt = w.time;
-  w.flags.directorLull = 40 + rng.range(0, 35);
+  w.flags.directorLull = 30 + rng.range(0, 25);
   switch (pick) {
     case "omen": {
       w.nextOmenAt = Math.min(w.nextOmenAt, w.time);
@@ -89,6 +91,10 @@ export function updateDirector(w: World) {
       const h = Object.values(w.factions).find((f) => f.isAI && f.persona === "hoarder");
       if (h) h.raidCooldown = -1;
       w.flags.directorLull = 70;
+      break;
+    }
+    case "boars": {
+      spawnBoars(w, rng, 1 + Math.min(2, Math.floor(level / 3)));
       break;
     }
     case "windfall": {

@@ -252,6 +252,14 @@ class AudioEngine {
     else if (mood === "grumpy") this.tone(f * 0.7, 0.18, "sawtooth", 0.04, undefined, f * 0.5);
     else this.tone(f, 0.1, "square", 0.04, undefined, f * 1.2);
   }
+  giggle() {
+    if (!this.throttle("giggle", 400)) return;
+    [0, 90, 170].forEach((d, i) => setTimeout(() => this.tone(700 + i * 120 + Math.random() * 80, 0.07, "square", 0.05, undefined, 1100 + i * 100), d));
+  }
+  boing() {
+    this.tone(180, 0.22, "sine", 0.18, undefined, 520);
+    setTimeout(() => this.tone(420, 0.12, "triangle", 0.08, undefined, 300), 120);
+  }
   terraform() {
     if (!this.throttle("terra", 120)) return;
     this.burst(0.25, 0.12, "lowpass", 300, 120);

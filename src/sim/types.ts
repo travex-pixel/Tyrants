@@ -4,7 +4,7 @@
  * The engine (engine.ts) mutates a World in fixed time steps; the renderer only reads it.
  */
 
-export type SpeciesId = "goblin" | "trollkin" | "mushroom";
+export type SpeciesId = "goblin" | "trollkin" | "mushroom" | "boar";
 export type ResourceType = "wood" | "stone" | "food";
 export type BiomeId = "verdant" | "ember" | "crystal" | "frost";
 
@@ -148,6 +148,24 @@ export interface Skiff {
   duration: number;
   passengers: number[];
   purpose: "raid" | "home";
+}
+
+/** A timed, on-world dare generated from live state. */
+export interface Dare {
+  id: string;
+  kind: "dunk" | "bowl" | "tree" | "friends" | "gather" | "bless3" | "tame";
+  text: string;
+  targetId?: number;
+  targetId2?: number;
+  x?: number;
+  z?: number;
+  startedAt: number;
+  expiresAt: number;
+  progress: number;
+  target: number;
+  essence: number;
+  xp: number;
+  baseline?: number;
 }
 
 export interface GoalState {
@@ -421,6 +439,8 @@ export interface World {
   level: number;
   omen: PendingOmen | null;
   nextOmenAt: number;
+  dare: Dare | null;
+  nextDareAt: number;
 }
 
 /** Commands are the only way players (local or remote) change the world. */

@@ -81,6 +81,8 @@ interface GameStore {
   setBookTab: (p: Panel) => void;
   journalExpanded: boolean;
   setJournalExpanded: (v: boolean) => void;
+  pointerTarget: { creatureId?: number; x?: number; z?: number } | null;
+  setPointerTarget: (p: { creatureId?: number; x?: number; z?: number } | null) => void;
 }
 
 let toastId = 1;
@@ -144,4 +146,6 @@ export const useGame = create<GameStore>((set) => ({
   setBookTab: (bookTab) => set({ bookTab, panel: bookTab }),
   journalExpanded: false,
   setJournalExpanded: (journalExpanded) => set({ journalExpanded }),
+  pointerTarget: null,
+  setPointerTarget: (pointerTarget) => set({ pointerTarget }),
 }));

@@ -121,6 +121,8 @@ export function createWorld(o: CreateWorldOptions): World {
     level: 1,
     omen: null,
     nextOmenAt: 45,
+    dare: null,
+    nextDareAt: 120,
   };
   for (const a of ACHIEVEMENTS) w.achievements[a.id] = { ...a, unlockedAt: null };
 
@@ -130,6 +132,9 @@ export function createWorld(o: CreateWorldOptions): World {
   populateIsland(w, main, rng, { treeDensity: o.noTrees ? 0 : (o.treeDensity ?? 1) });
 
   w.factions.p1 = makeFaction("p1", "You", FACTION_COLORS[0], false, 1, o.difficulty);
+  // the wild: boars and whatever else wanders in; no stores, no plans
+  w.factions.wild = makeFaction("wild", "The Wild", "#8a6a3a", false, 1, o.difficulty);
+  w.factions.wild.jobPriorities = { gather: 0, build: 0, farm: 0, haul: 0, explore: 0 };
 
   // Rival islands
   const rivals = o.rivals !== false && !o.noRivals && (o.mode === "solo" || o.mode === "friends");

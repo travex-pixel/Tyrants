@@ -10,6 +10,7 @@ import { BUILDINGS, SPECIES } from "./species";
 import { unlockAchievement, addXp } from "./progression";
 import { grabNode } from "./projectiles";
 import { boardSkiff } from "./skiffs";
+import { tameBoar } from "./wild";
 import { addMayhem, damageBuilding } from "./mayhem";
 import { resolveOmen } from "./omens";
 import { findFlatSpot as _ffs } from "./terrain";
@@ -191,7 +192,16 @@ export function applyCommand(w: World, cmd: Command, rng: RNG): CommandResult {
       w.stats.blessed++;
       addXp(w, 4, "bless");
       const near = isl ? creaturesNear(w, cmd.x, cmd.z, 3.5, isl.id) : [];
+      const blessed = near.filter((c) => c.faction !== "wild").length;
+      if (blessed > ((w.flags.bestBless as number) ?? 0)) w.flags.bestBless = blessed;
+      if (blessed >= 3) w.flags.bestBlessAt = w.time;
+      // the Sun warms two creatures into friendship
+      for (let i = 0; i < near.length; i++) for (let j = i + 1; j < near.length; j++) if (near[i].faction === near[j].faction) { relation(near[i], near[j].id, 12); relation(near[j], near[i].id, 12); }
       for (const c of near) {
+        if (c.faction === "wild") {
+          tameBoar(w, c);
+          continue;
+        }
         c.blessedUntil = w.time + 45;
         c.happiness = clamp(c.happiness + 25, 0, 100);
         c.energy = clamp(c.energy + 30, 0, 100);
