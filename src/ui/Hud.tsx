@@ -197,9 +197,9 @@ export function Hud({ actions }: { actions: HudActions }) {
       {/* ── Bottom: tokens ── */}
       {!hideForIntro && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
-          {power === "spawn" && !buildType && (
+          {power === "spawn" && !buildType && !teaching && (
             <div className="panel row p-1.5 pop" style={{ gap: 6 }}>
-              {(Object.keys(SPECIES) as SpeciesId[]).map((id) => (
+              {(Object.keys(SPECIES) as SpeciesId[]).filter((id) => id !== "boar").map((id) => (
                 <button key={id} className={`face ${species === id ? "active" : ""}`} title={`${SPECIES[id].name}: ${SPECIES[id].blurb}`} onClick={() => { setSpecies(id); audio.click(); audio.creatureVoice(id === "goblin" ? 1 : id === "trollkin" ? 2 : 3); }}>
                   <SpeciesFace id={id} />
                   <span>{SPECIES[id].name.split(" ")[0]}</span>

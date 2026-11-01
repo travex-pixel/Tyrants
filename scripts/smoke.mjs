@@ -88,7 +88,11 @@ await step("grab and throw a creature via pointer", async () => {
 });
 await step("tutorial: friend, sun, farm", async () => {
   // Friend is pre-armed: tap the ground
-  let spot = await page.evaluate(() => window.__lt.buildSpotScreen(0));
+  let spot = null;
+  for (let k = 0; k < 6; k++) {
+    spot = await page.evaluate((kk) => window.__lt.buildSpotScreen(kk), k);
+    if (spot && spot.y > 120 && spot.y < 560 && spot.x > 80 && spot.x < 1200) break;
+  }
   for (let i = 0; i < 4; i++) {
     await page.mouse.click(spot.x + i * 10, spot.y);
     await page.waitForTimeout(1200);

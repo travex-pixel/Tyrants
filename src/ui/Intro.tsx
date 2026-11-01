@@ -56,7 +56,12 @@ export function IntroOverlay({ onFinish }: { onFinish: () => void }) {
       timer.current = window.setTimeout(() => setIntro(2), 3600);
     } else if (stage === 2) {
       if (w) {
-        const c = Object.values(w.creatures).find((x) => x.faction === w.playerFaction && x.species === "goblin" && x.state !== "held") ?? Object.values(w.creatures).find((x) => x.faction === w.playerFaction);
+        // the star of the show: whoever is closest to the middle of the screen right now
+        const cands = Object.values(w.creatures).filter((x) => x.faction === w.playerFaction && x.state !== "held" && x.state !== "thrown" && x.species !== "boar");
+        const tx = cameraCtl.target.x;
+        const tz = cameraCtl.target.z;
+        cands.sort((a, b) => (a.x - tx) ** 2 + (a.z - tz) ** 2 - ((b.x - tx) ** 2 + (b.z - tz) ** 2));
+        const c = cands[0];
         if (c) {
           setPointer({ creatureId: c.id });
           w.flags.tutorialStar = c.id;
